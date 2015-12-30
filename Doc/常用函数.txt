@@ -1,0 +1,16 @@
+memcpy((*info).called.mmsi_str ,"         ",9);
+第一个参数是目的地址，第二个参数是源地址，第三个是拷贝数量
+
+
+
+ atol((const char *)(SCOperateInfo.called.mmsi_str))
+ascii码字符转换成十进制数
+itoa(MMSI, cmd+6, 10);
+
+
+( strcmp( (const char *)((*SCBookInfo_buf.TableEntry).mmsi_str), (const char *)((*(SCBookInfo.TableEntry+SCBookInfo.ShowStart+SCBookInfo.NewCursor)).mmsi_str) ) == 0 )
+
+
+
+
+
