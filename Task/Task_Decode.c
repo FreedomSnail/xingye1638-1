@@ -41,8 +41,13 @@ void Task_Decode(void* p_arg)
 	u8* msg;
 	u8 cnt;
 	u16 NoLiquidHighLevelCnt,NoLiquidLowLevelCnt;
+	u16 PumpHighCurrentCnt,PumpLowCurrentCnt;
+	u8  NoLiquidFlag = 0;
+	u8  PumpLowCurrentFlag = 0;
+	
 	msg = msg;
 	DecodeQSem = OSQCreate(&DecodeQMsgTbl[0], DECODE_RESOURCES);
+	
 	DJI_Onboard__API_Activation_Init();
 	DJI_Onboard_API_Activation();
 	while (1) {
@@ -67,7 +72,7 @@ void Task_Decode(void* p_arg)
 					if(Device.PWMPeriod<PWM_HIGHT_LEVEL_WIDTH) {
 						Pump_Voltage_Set(0);
 					} else {
-						Pump_Voltage_Set(PUM_VOLTAGE_OUT);	//  PUMP_VOLTAGE_12V
+						Pump_Voltage_Set(PUMP_VOLTAGE_OUT);	//  PUMP_VOLTAGE_12V
 					}
 				}
 				Adc_Filter();
@@ -79,7 +84,7 @@ void Task_Decode(void* p_arg)
 					}
 					NoLiquidHighLevelCnt++;
 					if(NoLiquidHighLevelCnt==3) {	//确认是高电平脉冲，则产生一次消息
-						Device.isDoseRunOut = 1;
+						NoLiquidFlag = 0;
 					}
 				} else {		//检测到低电平
 					if(NoLiquidHighLevelCnt>0) {
@@ -87,9 +92,46 @@ void Task_Decode(void* p_arg)
 					}
 					NoLiquidLowLevelCnt++;
 					if(NoLiquidLowLevelCnt==3) {	//确认是低电平脉冲，则产生一次消息
-						Device.isDoseRunOut = 0;
+						NoLiquidFlag = 1;
 					}
 				}
+				if(Device.PumpCurrent > PUMP_CURRENT_CRITICAL_POINT) {			//水泵电流高
+					if(PumpLowCurrentCnt>0) {
+						PumpLowCurrentCnt = 0;
+					}
+					PumpHighCurrentCnt++;
+					if(PumpHighCurrentCnt==3) {	//确认是水泵处于高电流运行(因为有农药所以相对阻力大)，则产生一次消息
+						PumpLowCurrentFlag = 0;
+					}
+				} else {		//检测到低电流
+					if(PumpHighCurrentCnt>0) {
+						PumpHighCurrentCnt = 0;
+					}
+					PumpLowCurrentCnt++;
+					if(PumpLowCurrentCnt==3) {	//确认是水泵处于低电流运行，则产生一次消息
+						PumpLowCurrentFlag = 1;
+					}
+				}
+				if( Device.LiquidSpeed>0 ) {
+					//if((NoLiquidFlag == 1)&&(PumpLowCurrentFlag == 1)) {
+					if(PumpLowCurrentFlag == 1) {
+						Device.isDoseRunOut = 1;
+					} else {
+						Device.isDoseRunOut = 0;
+					}
+				} else {
+					Device.isDoseRunOut = 0;
+				}
+				#if 0
+				cnt++;
+				if(cnt<100) {
+					LED_OPERATION_ON;
+				} else if(cnt<200) {
+					LED_OPERATION_OFF;
+				} else {
+					cnt = 0;
+				}
+				#endif
 				Log_test();
 			}
 		}
@@ -102,7 +144,7 @@ void Task_Decode(void* p_arg)
 				Device.LoseRemoteSignalCnt = 200;
 				switch(DataFromMobile.data[0]) {
 					case '1':	//打开水泵
-						Pump_Voltage_Set(PUM_VOLTAGE_OUT);
+						Pump_Voltage_Set(PUMP_VOLTAGE_OUT);
 						break;
 					case '0':
 						Pump_Voltage_Set(0);
@@ -112,6 +154,7 @@ void Task_Decode(void* p_arg)
 				}
 			}
 		}
+		#if 1
 		cnt++;
 		if(cnt<10) {
 			LED_OPERATION_ON;
@@ -120,6 +163,7 @@ void Task_Decode(void* p_arg)
 		} else {
 			cnt = 0;
 		}
+		#endif
 		if( Device.LoseRemoteSignalCnt == 0) {
 			Pump_Voltage_Set(0);
 		}

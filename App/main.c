@@ -17,6 +17,11 @@
 ** Modified date :
 ** Version :
 ** Description :
+实现功能：
+1.机身号码擦写，依靠WIFI透传，使用手机APP修改当前机身号码。
+2.远程监控使用授权，通过sim卡，主动发送本机机身编号与授权状态到服务器，接收服务器反馈的授权信息
+3.可以通过PWM输入或者串口信号输入控制水泵的开关
+4.水泵电压可调
 ************************************************************************************************/
 #define GLOBALS
 
@@ -25,10 +30,7 @@
 //#pragma diag_suppress 870		  //禁止出现warning:  #870-D: invalid multibyte character sequence这个警告消息
 
 
-
-
 static  OS_STK App_TaskStartStk[APP_TASK_START_STK_SIZE];
-
 
 	
 
@@ -79,12 +81,10 @@ int main(void)
 ************************************************************************************************/
 void Sys_Data_Init(void)
 {
-	MCP41xxx_Write_RES(PUM_VOLTAGE_OUT);
+	MCP41xxx_Write_RES(PUMP_VOLTAGE_OUT);
 	Uart2.DjiPackageStatus = DJI_PACKAGE_RECV_IDLE;
 	Uart2.WriteSnPackageStatus = WRITE_SN_PACKAGE_RECV_IDLE;
 	GsmCmd.GsmCmdStage = GSM_CMD_STAGE_AT_COPS;
-	
-	
 }
 /************************************************************************************************
 ** Function name :			
@@ -174,8 +174,6 @@ void BSP_Stage_2_Init(void)
 		LOG_SIM900("禁止授权\r\n");
 		USART_ITConfig(SERIAL_PORT_DJI_SDK, USART_IT_RXNE, DISABLE);  //禁止接收中断
 	}
-	
-	
 }
 /************************************************************************************************
 ** Function name :			
@@ -201,7 +199,14 @@ void App_TaskStart(void* p_arg)
 	OSTimeDly(100);
 	Device.PumpCurrentRef = Get_Pump_Current_Ref();
 	while (1) {
-		OSTimeDly(1000);
+		OSTimeDly(10);
+		LED_NIGHT_FLIGHT_ON;
+		OSTimeDly(10);
+		LED_NIGHT_FLIGHT_OFF;
+		OSTimeDly(10);
+		LED_NIGHT_FLIGHT_ON;
+		OSTimeDly(100);
+		LED_NIGHT_FLIGHT_OFF;
 	}
 }
 /************************************************************************************************

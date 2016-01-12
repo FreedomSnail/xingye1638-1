@@ -76,12 +76,50 @@ void RCC_Configuration(void)
 ** Output :
 ** Return :
 ** Others :
+** 蜂鸣器
+************************************************************************************************/
+void GPIO_Beep_Config(void)
+{
+	GPIO_InitTypeDef GPIO_InitStructure;
+	BEEP_PORT_RCC_ENABLE;
+	GPIO_InitStructure.GPIO_Pin = BEEP_PIN;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;	//推挽
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;	//50M时钟速度
+	GPIO_Init(BEEP_PORT, &GPIO_InitStructure);
+}
+/************************************************************************************************
+** Function name :			
+** Description :
+** 
+** Input :
+** Output :
+** Return :
+** Others :
+** 夜航信号指示灯
+************************************************************************************************/
+void GPIO_Led_Night_Flight_Config(void)
+{
+	GPIO_InitTypeDef GPIO_InitStructure;
+	LED_NIGHT_FLIGHT_PORT_RCC_ENABLE;
+	GPIO_InitStructure.GPIO_Pin = LED_NIGHT_FLIGHT_PIN;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;	//推挽
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;	//50M时钟速度
+	GPIO_Init(LED_NIGHT_FLIGHT_PORT, &GPIO_InitStructure);
+}
+/************************************************************************************************
+** Function name :			
+** Description :
+** 
+** Input :
+** Output :
+** Return :
+** Others :
 ** 信号指示灯
 ************************************************************************************************/
 void GPIO_Led_Operation_Config(void)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+	LED_OPERATION_PORT_RCC_ENABLE;
 	GPIO_InitStructure.GPIO_Pin = LED_OPERATION_PIN;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;	//推挽
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;	//50M时钟速度
@@ -100,10 +138,9 @@ void GPIO_Led_Operation_Config(void)
 void GPIO_Liquid_Outof_Config(void)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+	LIQUID_OUTOF_IN_PORT_RCC_ENABLE;
 	GPIO_InitStructure.GPIO_Pin = LIQUID_OUTOF_IN_PIN;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;	//输入
-	//GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;	//50M时钟速度
 	GPIO_Init(LIQUID_OUTOF_IN_PORT, &GPIO_InitStructure);
 }
 /************************************************************************************************
@@ -122,7 +159,7 @@ void GPIO_Liquid_Outof_Config(void)
 void GPIO_Pump_Ctrl_Config(void)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
+	PUMP_CONTROL_PORT_RCC_ENABLE;
 	GPIO_InitStructure.GPIO_Pin = PUMP_CONTROL_FRONT_PIN|PUMP_CONTROL_CENTER_PIN|PUMP_CONTROL_REAR_PIN;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;	//推挽
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;	//50M时钟速度
@@ -160,10 +197,9 @@ void GPIO_ADC1_Config(void)
 void GPIO_Write_SN_Config(void)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+	LIQUID_WRITE_SN_PORT_RCC_ENABLE;
 	GPIO_InitStructure.GPIO_Pin = LIQUID_WRITE_SN_PIN;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;	//上拉输入
-	//GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;	//50M时钟速度
 	GPIO_Init(LIQUID_WRITE_SN_PORT, &GPIO_InitStructure);
 }
 /************************************************************************************************
@@ -179,6 +215,8 @@ void GPIO_Write_SN_Config(void)
 void GPIO_Configuration(void)
 {
 	GPIO_Pump_Ctrl_Config();
+	GPIO_Beep_Config();
+	GPIO_Led_Night_Flight_Config();
 	GPIO_Led_Operation_Config();
 	GPIO_Liquid_Outof_Config();
 	GPIO_ADC1_Config();

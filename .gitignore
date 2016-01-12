@@ -6,6 +6,7 @@ JLinkLog.txt
 *.lst
 *.map
 *.axf
+*.bin
 *.Bak
 *.htm
 *.crf
@@ -45,7 +46,8 @@ JLinkLog.txt
 *.app
 *.i*86
 *.x86_64
-*.hex
+
+
 
 # SourceInsight
 *.IAB
