@@ -29,7 +29,6 @@ JLinkLog.txt
 *.pch
 
 # Libraries
-*.lib
 *.a
 *.la
 *.lo
@@ -61,6 +60,7 @@ JLinkLog.txt
 *.PS
 *.SearchResults
 *.WK3
+*.CF3
 
 
 # Debug files
