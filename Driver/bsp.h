@@ -61,7 +61,8 @@
 #define M 4 //为12个通道
 
 #define	PWM_RAISING_CNT		50	//PWM上升沿计数，超过50个认为是A2版本，否则是A3版本
-#define	PWM_HIGHT_LEVEL_WIDTH	1500
+#define	PWM_HIGHT_LEVEL_WIDTH_UP		1600
+#define	PWM_HIGHT_LEVEL_WIDTH_DOWN		1400
 
 #define	TIM2_OVER_FLOW_VALUE 50000
 

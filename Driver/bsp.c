@@ -441,7 +441,7 @@ void TIM2_Config(void)
 	TIM_ICInitStructure.TIM_ICPolarity = TIM_ICPolarity_Falling;
 	TIM_ICInitStructure.TIM_ICSelection = TIM_ICSelection_DirectTI;  	//TIM输入2，3或4选择对应的IC1或IC2或IC3或IC4相连
   	TIM_ICInitStructure.TIM_ICPrescaler = TIM_ICPSC_DIV1;     		//TIM捕获在捕获输入行每探测到一个边沿执行一次 
-  	TIM_ICInitStructure.TIM_ICFilter = 0x03;      					//滤波设置，经历几个周期跳变认定波形稳定0x0-0xf; 
+  	TIM_ICInitStructure.TIM_ICFilter = 0x0f;      					//滤波设置，经历几个周期跳变认定波形稳定0x0-0xf; 
 	TIM_ICInit(TIM2, &TIM_ICInitStructure);
 
 
@@ -449,7 +449,7 @@ void TIM2_Config(void)
 	TIM_ICInitStructure.TIM_ICPolarity = TIM_ICPolarity_Rising;
 	TIM_ICInitStructure.TIM_ICSelection = TIM_ICSelection_DirectTI;  	//TIM输入2，3或4选择对应的IC1或IC2或IC3或IC4相连
   	TIM_ICInitStructure.TIM_ICPrescaler = TIM_ICPSC_DIV1;     		//TIM捕获在捕获输入行每探测到一个边沿执行一次 
-  	TIM_ICInitStructure.TIM_ICFilter = 0x03;      					//滤波设置，经历几个周期跳变认定波形稳定0x0-0xf; 
+  	TIM_ICInitStructure.TIM_ICFilter = 0x0f;      					//滤波设置，经历几个周期跳变认定波形稳定0x0-0xf; 
 	TIM_ICInit(TIM2, &TIM_ICInitStructure);
 	
 	/*预先清除所有中断位*/

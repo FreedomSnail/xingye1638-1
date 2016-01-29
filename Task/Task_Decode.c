@@ -69,9 +69,9 @@ void Task_Decode(void* p_arg)
 				if(Device.PWMSignalCnt == 0) { 	//¶ªÊ§PWMÐÅºÅ
 					Pump_Voltage_Set(0);
 				} else {
-					if(Device.PWMPeriod<PWM_HIGHT_LEVEL_WIDTH) {
+					if(Device.PWMPeriod<PWM_HIGHT_LEVEL_WIDTH_DOWN) {
 						Pump_Voltage_Set(0);
-					} else {
+					} else if(Device.PWMPeriod>PWM_HIGHT_LEVEL_WIDTH_UP){
 						Pump_Voltage_Set(PUMP_VOLTAGE_OUT);	//  PUMP_VOLTAGE_12V
 					}
 				}
