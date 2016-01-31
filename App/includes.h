@@ -73,12 +73,12 @@
 
 
 
-
 #include "app_cfg.h"
 
 #include "Task_Decode.h"
 #include "Task_GprsProc.h"
 #include "Task_Write_SN.h"
+#include "Task_Dji_Activation.h"
 
 
 #endif

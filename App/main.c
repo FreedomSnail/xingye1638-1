@@ -85,6 +85,8 @@ void Sys_Data_Init(void)
 	Uart2.DjiPackageStatus = DJI_PACKAGE_RECV_IDLE;
 	Uart2.WriteSnPackageStatus = WRITE_SN_PACKAGE_RECV_IDLE;
 	GsmCmd.GsmCmdStage = GSM_CMD_STAGE_AT_COPS;
+	
+	
 }
 /************************************************************************************************
 ** Function name :			
@@ -126,7 +128,8 @@ void BSP_Stage_2_Init(void)
 								TASK_WRITE_SN_SIZE,
 								(void *)0,
 								OS_TASK_OPT_STK_CHK|OS_TASK_OPT_STK_CLR);
-		
+		USART_ITConfig(USART2, USART_IT_RXNE, ENABLE); 
+		NVIC_Configuration();
 		return ;
 	}
 	Device.Usart2Process = USART2_DJI_Process;
@@ -135,45 +138,27 @@ void BSP_Stage_2_Init(void)
 		LOG_SIM900("获取机身号码成功\r\n");
 		LOG_SIM900(GprsCmd.SNLocal);
 		LOG_SIM900("\r\n");
+		GprsCmd.isSNSave = SN_SAVE_YES;
 	} else {
 		LOG_SIM900("读取机身号码失败\r\n");
 		memcpy(GprsCmd.SNLocal,"000000000000000000000",TXA_SN_LENTH);
-		return ;
+		GprsCmd.isSNSave = SN_SAVE_NO;
 	}
 	Get_Product_Permission();
 	memcpy(GprsCmd.BaseStationLongitude,"106.123456",GPRS_BASE_STATION_LONGITUDE_LENTH);
 	memcpy(GprsCmd.BaseStationLatitude,"21.123456",GPRS_BASE_STATION_LATITUDE_LENTH);
-	//连接服务器处理任务------------------------------------------------------
-	OSTaskCreateExt(Task_Gprs_Proc,
-   					(void *)0,
-   					(OS_STK *)&TaskGprsProcStk[TASK_GPRS_PROC_STK_SIZE-1],
-   					TASK_GPRS_PROC_PRIO,
-   					TASK_GPRS_PROC_PRIO,
-   					(OS_STK *)&TaskGprsProcStk[0],
-		                    TASK_GPRS_PROC_STK_SIZE,
-		                    (void *)0,
-		                    OS_TASK_OPT_STK_CHK|OS_TASK_OPT_STK_CLR);
-	
 	if(GprsCmd.PermissionLocal == PERMISSION_ALLOW) {	
 		LOG_SIM900("授权允许\r\n");
-		//解码处理任务------------------------------------------------------
-	   	OSTaskCreateExt(Task_Decode,
-	   					(void *)0,
-	   					(OS_STK *)&TaskDecodeStk[TASK_DECODE_STK_SIZE-1],
-	   					TASK_DECODE_PRIO,
-	   					TASK_DECODE_PRIO,
-	   					(OS_STK *)&TaskDecodeStk[0],
-			                    TASK_DECODE_STK_SIZE,
-			                    (void *)0,
-			                    OS_TASK_OPT_STK_CHK|OS_TASK_OPT_STK_CLR); 
-
-		ADC_SoftwareStartConvCmd(ADC1, ENABLE);
-		DMA_Cmd(DMA1_Channel1, ENABLE); //启动DMA通道
-		TIM_Cmd(TIM2, ENABLE);
 	} else {
 		LOG_SIM900("禁止授权\r\n");
-		USART_ITConfig(SERIAL_PORT_DJI_SDK, USART_IT_RXNE, DISABLE);  //禁止接收中断
 	}
+
+	App_TaskCreate();
+	ADC_SoftwareStartConvCmd(ADC1, ENABLE);
+	DMA_Cmd(DMA1_Channel1, ENABLE); //启动DMA通道
+	TIM_Cmd(TIM2, ENABLE);
+	USART_ITConfig(USART2, USART_IT_RXNE, ENABLE); 
+	NVIC_Configuration();
 }
 /************************************************************************************************
 ** Function name :			
@@ -183,7 +168,7 @@ void BSP_Stage_2_Init(void)
 ** Output :
 ** Return :
 ** Others :
-** 此任务有点多余
+** 
 ************************************************************************************************/
 void App_TaskStart(void* p_arg)
 {	
@@ -194,7 +179,6 @@ void App_TaskStart(void* p_arg)
 	//----统计任务初始化函数  
 	OSStatInit();                    /* Determine CPU capacity.                              */
 	#endif
-	//App_TaskCreate();				//建立其他的任务
 	BSP_Stage_2_Init();   			//硬件平台第二阶段初始化
 	OSTimeDly(100);
 	Device.PumpCurrentRef = Get_Pump_Current_Ref();
@@ -221,9 +205,40 @@ void App_TaskStart(void* p_arg)
 ************************************************************************************************/
 void App_TaskCreate(void)
 {
-	#if 0
-	//连接服务器处理任务------------------------------------------------------
-   	OSTaskCreateExt(Task_Gprs_Proc,
+   	
+	OSTaskCreateExt(Task_Dji_SDK_Codec,
+   					(void *)0,
+   					(OS_STK *)&TaskCodecStk[TASK_CODEC_STK_SIZE-1],
+   					TASK_CODEC_PRIO,
+   					TASK_CODEC_PRIO,
+   					(OS_STK *)&TaskCodecStk[0],
+		                    TASK_CODEC_STK_SIZE,
+		                    (void *)0,
+		                    OS_TASK_OPT_STK_CHK|OS_TASK_OPT_STK_CLR); 
+   	
+	
+	
+    OSTaskCreateExt(Task_Dji_Activation,
+   					(void *)0,
+   					(OS_STK *)&TASK_DJI_ACTIVATION_STK[TASK_DJI_ACTIVATION_STK_SIZE-1],
+   					TASK_DJI_ACTIVATION_PRIO,
+   					TASK_DJI_ACTIVATION_PRIO,
+   					(OS_STK *)&TASK_DJI_ACTIVATION_STK[0],
+		                    TASK_DJI_ACTIVATION_STK_SIZE,
+		                    (void *)0,
+		                    OS_TASK_OPT_STK_CHK|OS_TASK_OPT_STK_CLR);
+	
+	OSTaskCreateExt(Task_PWM_Ctrl_Pump,
+   					(void *)0,
+   					(OS_STK *)&TaskPwmCtrlPumpStk[TASK_PWM_CTRL_PUMP_STK_SIZE-1],
+   					TASK_PWM_CTRL_PUMP_PRIO,
+   					TASK_PWM_CTRL_PUMP_PRIO,
+   					(OS_STK *)&TaskPwmCtrlPumpStk[0],
+		                    TASK_PWM_CTRL_PUMP_STK_SIZE,
+		                    (void *)0,
+		                    OS_TASK_OPT_STK_CHK|OS_TASK_OPT_STK_CLR); 
+	            
+	OSTaskCreateExt(Task_Gprs_Proc,
    					(void *)0,
    					(OS_STK *)&TaskGprsProcStk[TASK_GPRS_PROC_STK_SIZE-1],
    					TASK_GPRS_PROC_PRIO,
@@ -232,30 +247,7 @@ void App_TaskCreate(void)
 		                    TASK_GPRS_PROC_STK_SIZE,
 		                    (void *)0,
 		                    OS_TASK_OPT_STK_CHK|OS_TASK_OPT_STK_CLR);
-	
-	//编解码处理任务------------------------------------------------------
-   	OSTaskCreateExt(Task_Decode,
-   					(void *)0,
-   					(OS_STK *)&TaskDecodeStk[TASK_DECODE_STK_SIZE-1],
-   					TASK_DECODE_PRIO,
-   					TASK_DECODE_PRIO,
-   					(OS_STK *)&TaskDecodeStk[0],
-		                    TASK_DECODE_STK_SIZE,
-		                    (void *)0,
-		                    OS_TASK_OPT_STK_CHK|OS_TASK_OPT_STK_CLR); 
-	
-	//界面处理任务
-    OSTaskCreateExt(Task_GUI,
-   					(void *)0,
-   					(OS_STK *)&TaskGuiStk[TASK_GUI_STK_SIZE-1],
-   					TASK_GUI_PRIO,
-   					TASK_GUI_PRIO,
-   					(OS_STK *)&TaskGuiStk[0],
-		                    TASK_GUI_STK_SIZE,
-		                    (void *)0,
-		                    OS_TASK_OPT_STK_CHK|OS_TASK_OPT_STK_CLR);
-	
-	//实时时间处理任务------------------------------------------------------
+	#if 0		                    
    	OSTaskCreateExt(Task_Write_SN,
    					(void *)0,
    					(OS_STK *)&TaskWriteSNStk[TASK_WRITE_SN_SIZE-1],

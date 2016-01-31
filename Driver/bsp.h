@@ -91,9 +91,6 @@ typedef struct {
 	u16 AtomizerTargetPWM;
 	u16 isDoseRunOut;	//Å©Ò©Á¿Íê 1 £¬»¹ÓÐ 0
 
-	u16 PWMSignalCnt;
-	u16 PWMRaisingTime;
-	u16 PWMFallingTime;
 	u16 PWMPeriod;
 	
 	//RemoteSignalStatus_TypeEnum RemoteSignalStatus;		//Ò£¿ØÆ÷ÐÅºÅ×´Ì¬(Î´¶ªÊ§ºÍ¶ªÊ§)

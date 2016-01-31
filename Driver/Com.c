@@ -125,7 +125,8 @@ void USART2_Config(USART_TypeDef* USARTx,u32 baud)
  
   
   /* Enable USART2 Receive and Transmit interrupts */
-  USART_ITConfig(USARTx, USART_IT_RXNE, ENABLE);                    //使能接收中断
+  //USART_ITConfig(USARTx, USART_IT_RXNE, ENABLE);                    //使能接收中断
+  USART_ITConfig(USARTx, USART_IT_RXNE, DISABLE);                    //使能接收中断
   //USART_ITConfig(USARTx, USART_IT_TXE, ENABLE);				    //使能发送缓冲空中断
 
   
@@ -433,7 +434,8 @@ void USART2_DJI_Process(u8 Rev)
 				 Uart2.RxDataBuf[Uart2.RxIndex++] = Rev;
 				 if(Uart2.RxIndex == Uart2.DataLen) {
 					 Uart2.RxFlag = 1;
-					 OSQPost(DecodeQSem,(void *)&Msg);
+					 //OSQPost(UsartDjiCtrlPumpQsem,(void *)&Msg);
+					 OSSemPost(SemDjiCodec);
 					 Uart2.DjiPackageStatus = DJI_PACKAGE_RECV_IDLE;
 				 }
 			 } else {//接收到的数据致使数组越界

@@ -1011,7 +1011,7 @@ void Pro_Config_Comm_Encrypt_Key(const char *key)
 ** Others :
 ** 
 ************************************************************************************************/
-void DJI_Onboard__API_Activation_Init(void)
+void DJI_Onboard_API_Activation_Init(void)
 {
 
 	activation_msg.app_id =1008902;
@@ -1085,14 +1085,12 @@ void DJI_Onboard_API_Activation(void)
 ************************************************************************************************/
 void DJI_Onboard_send(void)
 {
-	//memcpy(str,"123456789",9);
-	//App_Send_Data( 2, 0, MY_ACTIVATION_SET,0xFE,str,sizeof(str));
 	App_Send_Data( 2, 0, MY_ACTIVATION_SET,0xFE,(unsigned char*)&str,9);
 }
 
 void Pro_Receive_Interface(void)
 {
-	#if 1
+	u8 Msg;
   	int Heard_CRC32=0;
 	ProFrameData_Unit  RecData;
 	SDKHeader RecHeader ;
@@ -1108,6 +1106,94 @@ void Pro_Receive_Interface(void)
 	memcpy(&Heard_CRC32,&Uart2.RxDataBuf[RecHeader.length - _SDK_CRC_DATA_SIZE] ,_SDK_CRC_DATA_SIZE);
 	if(sdk_stream_crc32_calc((unsigned char*)Uart2.RxDataBuf, RecHeader.length - _SDK_CRC_DATA_SIZE)!=Heard_CRC32) return;//整体校验
 	
+	RecData.CommandSet = Uart2.RxDataBuf[12];
+	RecData.CommandId  = Uart2.RxDataBuf[13];
+	RecData.dataLen = RecHeader.length - _SDK_FULL_DATA_SIZE_MIN-2;//透传数据的长度
+	if(RecData.dataLen>0) {
+		memcpy(&RecData.data , &Uart2.RxDataBuf[14],RecData.dataLen);
+	}
+	
+	memset((unsigned char*)&DataFromMobile,0,sizeof(DataFromMobile));
+	memcpy((unsigned char*)&DataFromMobile,(unsigned char*)&RecData,sizeof(RecData));
+	
+#if 1
+	if(RecHeader.is_ack) {
+		if((RecData.CommandSet == 0)&&(RecData.CommandId == 0)) {//激活应答
+			OSSemPost(SemDjiActivation);
+			//LOG_DJI("ACK Activation!\r\n");
+		} else if((RecData.CommandSet == 0x01)&&(RecData.CommandId == 0)) {
+			//LOG_DJI("ACK release!\r\n");
+		} else if((RecData.CommandSet == 0x02)&&(RecData.CommandId == 0)) {
+			//LOG_DJI("ACK obtain!\r\n");
+		}
+		// 0x0000：拒绝获取控制权(未满足获取控制权条件)
+		// 0x0001：成功释放控制权
+		// 0x0002：成功获得控制权
+		// 0x0003：正在获取控制权	
+	}else {
+		switch(RecData.CommandSet) {
+		#if 0
+			case 0x01://命令集 控制命令类
+				LOG_DJI_STR("Control data!\r\n");
+				switch(RecData.CommandId) {
+					case 0x00:	//请求获取/释放控制权(飞控至机载设备)
+													//返回码
+													// 0x0000：拒绝获取控制权(未满足获取控制权条件)
+													// 0x0001：成功释放控制权
+													// 0x0002：成功获得控制权
+													// 0x0003：正在获取控制权		
+						switch(RecData.data[0]) {
+							case 0x00:
+								break;
+							case 0x01:
+								break;
+							case 0x02:
+								break;
+							case 0x03:
+								break;
+							default:
+								break;
+						}
+						//USART_Send_Buf(SERIAL_PORT_DEBUG,DataFromDji.data,DataFromDji.dataLen);
+						
+						break;
+					case 0x01:	//切换飞行状态(飞控至机载设备)
+						
+						break;
+					case 0x02:	//查询飞行状态切换结果(飞控至机载设备)
+						
+						break;
+					default:
+						break;
+				}
+				break;
+		#endif
+			case 0x02://命令集 推送数据类,飞控==>机载设备
+				switch(RecData.CommandId) {
+					case 0x00:	//飞行数据
+						//LOG_DJI("Flight data!\r\n");
+						break;
+					case 0x02:	//移动设备至机载设备
+						LOG_DJI("Mobile data!\r\n");
+						if(DataFromMobile.data[0] == '1') {
+							Msg = '1';
+							OSQPost(UsartDjiCtrlPumpQsem,(void *)&Msg);
+						} else if((DataFromMobile.data[0] == '0')){
+							Msg = '0';
+							OSQPost(UsartDjiCtrlPumpQsem,(void *)&Msg);
+						}
+						//USART_Send_Buf(SERIAL_PORT_DEBUG,DataFromDji.data,DataFromDji.dataLen);
+						break;
+					default:
+						break;
+				}
+				break;
+			default:
+				break;
+		}
+	}
+#endif
+	#if 0
 	if(RecHeader.is_ack)
 	{
 		ProAckParameter Ack;
@@ -1145,9 +1231,7 @@ void Pro_Receive_Interface(void)
 		}
 		memcpy((unsigned char*)&DataFromMobile,(unsigned char*)&RecData,sizeof(RecData));
 		
-	}
-	else
-	{
+	}else{
 		RecData.CommandSet = Uart2.RxDataBuf[12];
 		RecData.CommandId = Uart2.RxDataBuf[13];
 		RecData.dataLen = RecHeader.length - _SDK_FULL_DATA_SIZE_MIN-2;//透传数据的长度

@@ -150,13 +150,6 @@ void SysTickHandler(void)
 	
     OSTimeTick();     /* Call uC/OS-II's OSTimeTick(),在os_core.c文件里定义,主要判断延时的任务是否计时到*/
 	IWDG_ReloadCounter();	//喂狗
-
-	if( Device.LoseRemoteSignalCnt > 0) {
-		Device.LoseRemoteSignalCnt--;
-	}
-	if(Device.PWMSignalCnt > 0) {
-		Device.PWMSignalCnt--;
-	}
     OSIntExit();  //在os_core.c文件里定义,如果有更高优先级的任务就绪了,则执行一次任务切换    
      
 }
@@ -516,33 +509,31 @@ void TIM2_IRQHandler(void)
 {
 	CPU_SR         cpu_sr;
 	u16 temp;
+	static u16 PWMFallingTime;
+	static u16 PWMRaisingTime;
 	OS_ENTER_CRITICAL();
   	OSIntNesting++;
 	OS_EXIT_CRITICAL();
 	//用户程序..
-	Device.PWMSignalCnt = 10;
 	if(TIM_GetITStatus(TIM2,TIM_IT_CC1) == SET) {	//下降沿中断,经过三级管倒相了 
-		Device.PWMFallingTime = TIM_GetCapture1(TIM2);
-		if(Device.isA2 < PWM_RAISING_CNT) {		//A2版本判断
-			Device.isA2++;
-		}
+		PWMFallingTime = TIM_GetCapture1(TIM2);
 		TIM_ClearITPendingBit(TIM2, TIM_IT_CC1);
 	} else {
-		Device.PWMRaisingTime = TIM_GetCapture2(TIM2);
-		#if 1
-		if(Device.PWMRaisingTime > Device.PWMFallingTime) {
-			temp = Device.PWMRaisingTime - Device.PWMFallingTime;	
+		PWMRaisingTime = TIM_GetCapture2(TIM2);
+		
+		if(PWMRaisingTime > PWMFallingTime) {
+			temp = PWMRaisingTime - PWMFallingTime;	
 			if(temp>TIM2_OVER_FLOW_VALUE/2) {
-				temp = TIM2_OVER_FLOW_VALUE - Device.PWMRaisingTime +Device.PWMFallingTime;
+				temp = TIM2_OVER_FLOW_VALUE - PWMRaisingTime +PWMFallingTime;
 			}
 		} else {
-			temp = Device.PWMFallingTime - Device.PWMRaisingTime;
+			temp = PWMFallingTime - PWMRaisingTime;
 			if(temp>TIM2_OVER_FLOW_VALUE/2) {
-				temp = TIM2_OVER_FLOW_VALUE  - Device.PWMFallingTime + Device.PWMRaisingTime;
+				temp = TIM2_OVER_FLOW_VALUE  - PWMFallingTime + PWMRaisingTime;
 			}
 		}	
 		Device.PWMPeriod= temp;
-		#endif
+		OSSemPost(SemPWM);
 		TIM_ClearITPendingBit(TIM2, TIM_IT_CC2);
 	} 
 	//用户程序..
@@ -687,6 +678,7 @@ void USART2_IRQHandler(void)
 {
 	CPU_SR cpu_sr;
 	u8 Rev;
+	u8 Msg = 1;
 	OS_ENTER_CRITICAL();
 	OSIntNesting++;
 	OS_EXIT_CRITICAL();
@@ -733,7 +725,7 @@ void USART2_IRQHandler(void)
 		 			Uart2.RxDataBuf[Uart2.RxIndex++] = Rev;
 		 			if(Uart2.RxIndex == Uart2.DataLen) {
 			 			Uart2.RxFlag = 1;
-			 			OSQPost(DecodeQSem,(void *)&Msg);
+			 			OSQPost(UsartDjiCtrlPumpQsem,(void *)&Msg);
 			 			Uart2.DjiPackageStatus = DJI_PACKAGE_RECV_IDLE;
 		 			}
 	 			} else {//接收到的数据致使数组越界

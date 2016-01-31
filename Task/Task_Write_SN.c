@@ -40,7 +40,7 @@ void Task_Write_SN(void* p_arg)
 	INT8U err;
 	u8 i;
 	(void)p_arg;	
-	WriteSNQSem = OSQCreate(&WriteSNQMsgTbl[0], DECODE_RESOURCES);
+	WriteSNQSem = OSQCreate(&WriteSNQMsgTbl[0], 6);
 	while(1) {
 		OSQPend(WriteSNQSem,  100, &err);
 		if(err == OS_ERR_NONE) {

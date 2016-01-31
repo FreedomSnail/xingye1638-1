@@ -60,12 +60,18 @@ typedef enum {
 	PERMISSION_PROHIBIT
 }Permission_TypeEnum;
 
+typedef enum {
+	SN_SAVE_YES,
+	SN_SAVE_NO
+}IsSN_TypeEnum;
+
+
 typedef struct {
 	Permission_TypeEnum PermissionLocal;	//本地授权
 	Permission_TypeEnum PermissionRemote;	//服务器授权
 	
-	
-	//u8  SNRemote[TXA_SN_LENTH];				//从服务器端接收到的机身编号
+	IsSN_TypeEnum isSNSave;					//是否保存有正确的机身编号
+	//u8  SNRemote[TXA_SN_LENTH];			//从服务器端接收到的机身编号
 	//u32 BaseStationLongitude;				//基站经度
 	//u32 BaseStationLatitude;				//基站纬度
 	u8 BaseStationLongitude[GPRS_BASE_STATION_LONGITUDE_LENTH];				//基站经度

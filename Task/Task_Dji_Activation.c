@@ -3,15 +3,15 @@
 **                         2013-2023, Freedom ...
 **
 **----------------------------------------File Info----------------------------------------------
-** File name : Task_GUI_General.c
+** File name : Task_Dji_Activation.c
 ** Latest modified date :
 ** Latest version :
 ** Description :
 **-----------------------------------------------------------------------------------------------
-** Created by : 祝定一
-** Created date :2012年2月27日9:39:37
-** Version :V1.1.0
-** Description :通用模式下的界面显示处理任务
+** Created by : 陆志
+** Created date :2016年1月30日13:42:50
+** Version :
+** Description :
 **-----------------------------------------------------------------------------------------------
 ** Modified by :
 ** Modified date :
@@ -20,10 +20,8 @@
 ************************************************************************************************/
 #include "includes.h"
 
-OS_EVENT **pGuiQSem; 
-OS_EVENT *GuiNormalQSem; 
-OS_STK TaskGuiStk[TASK_GUI_STK_SIZE];
-void     *GuiNormalQSemTbl[GUI_RESOURCES];
+OS_EVENT *SemDjiActivation; 
+OS_STK TASK_DJI_ACTIVATION_STK[TASK_DJI_ACTIVATION_STK_SIZE];
 /************************************************************************************************
 ** Function name :			
 ** Description :
@@ -34,17 +32,35 @@ void     *GuiNormalQSemTbl[GUI_RESOURCES];
 ** Others :
 ** 
 ************************************************************************************************/
-void Task_GUI(void* p_arg)
+void Task_Dji_Activation(void* p_arg)
 {
 	INT8U err;
-	u8* msg;
+	u8 temp;
 	(void) p_arg;		//防止编译器警告
-	msg =msg;
-	while (1) {   
-		msg = (u8 *)OSQPend(*pGuiQSem,  0, &err);			//等待消息
-		USART_OUT(USART1,"界面任务运行一次\r\n");
+	SemDjiActivation = OSSemCreate(0);
+	DJI_Onboard_API_Activation_Init();
+	while(1) {
+		LOG_DJI("\r\ntry Activate!\r\n");
+		DJI_Onboard_API_Activation();
+		OSSemPend(SemDjiActivation,100,&err); 
+		if(OS_ERR_NONE == err) {
+			LOG_DJI("\r\nActivate ok!\r\n");
+			break;
+		}
+	}
+	while(1) {
+		OSTimeDly(10);
+		Adc_Filter();
+		Device.V6s = Get_6S_Val();
+		Device.V12s = Device.V6s;
+		Device.PumpCurrent = Get_Pump_Current();
+		temp = (u8)(Device.PumpCurrent*10);
+		//USART_OUT(SERIAL_PORT_DEBUG,"6s=%d\r\n",Device.V6s);
+		//USART_OUT(SERIAL_PORT_DEBUG,"c=%d\r\n",temp);
+		Send_Msg_2_M100();
 	}
 }
+
 
 
 

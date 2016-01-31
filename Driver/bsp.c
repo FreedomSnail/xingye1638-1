@@ -283,7 +283,6 @@ void ADC1_Configuration(void)
 
 	while(ADC_GetCalibrationStatus(ADC1)); //获取指定ADC1的校准程序,设置状态则等待
 
-
 }
 /************************************************************************************************
 ** Function name :			
@@ -441,7 +440,7 @@ void TIM2_Config(void)
 	TIM_ICInitStructure.TIM_ICPolarity = TIM_ICPolarity_Falling;
 	TIM_ICInitStructure.TIM_ICSelection = TIM_ICSelection_DirectTI;  	//TIM输入2，3或4选择对应的IC1或IC2或IC3或IC4相连
   	TIM_ICInitStructure.TIM_ICPrescaler = TIM_ICPSC_DIV1;     		//TIM捕获在捕获输入行每探测到一个边沿执行一次 
-  	TIM_ICInitStructure.TIM_ICFilter = 0x0f;      					//滤波设置，经历几个周期跳变认定波形稳定0x0-0xf; 
+  	TIM_ICInitStructure.TIM_ICFilter = 0x0F;      					//滤波设置，经历几个周期跳变认定波形稳定0x0-0xf; 
 	TIM_ICInit(TIM2, &TIM_ICInitStructure);
 
 
@@ -449,7 +448,7 @@ void TIM2_Config(void)
 	TIM_ICInitStructure.TIM_ICPolarity = TIM_ICPolarity_Rising;
 	TIM_ICInitStructure.TIM_ICSelection = TIM_ICSelection_DirectTI;  	//TIM输入2，3或4选择对应的IC1或IC2或IC3或IC4相连
   	TIM_ICInitStructure.TIM_ICPrescaler = TIM_ICPSC_DIV1;     		//TIM捕获在捕获输入行每探测到一个边沿执行一次 
-  	TIM_ICInitStructure.TIM_ICFilter = 0x0f;      					//滤波设置，经历几个周期跳变认定波形稳定0x0-0xf; 
+  	TIM_ICInitStructure.TIM_ICFilter = 0x0F;      					//滤波设置，经历几个周期跳变认定波形稳定0x0-0xf; 
 	TIM_ICInit(TIM2, &TIM_ICInitStructure);
 	
 	/*预先清除所有中断位*/
@@ -459,7 +458,7 @@ void TIM2_Config(void)
 	TIM_ITConfig(TIM2, TIM_IT_CC1, ENABLE);
 	TIM_ITConfig(TIM2, TIM_IT_CC2, ENABLE);
 	/* 允许TIM2开始计数 */
-//	TIM_Cmd(TIM2, ENABLE);
+	//TIM_Cmd(TIM2, ENABLE);
 }
 /************************************************************************************************
 ** Function name :			
@@ -567,7 +566,8 @@ void BSP_Stage_1_Init(void)
 	UART4_Config(SERIAL_PORT_DEBUG,115200);		//串口4初始化，调试接口
 	SPI_Flash_Init();					//SPI模块，用来读写外部flash芯片
 	TIM2_Config();						//PWM检测，用到定时器2的输入捕获功能，捕获通道1，2
-  	NVIC_Configuration();				//中断向量分配,所有用得到的中断都在这里配置
+  	//NVIC_Configuration();				//中断向量分配,所有用得到的中断都在这里配置
+  	
 }
 /************************************************************************************************
 ** Function name :			
@@ -695,6 +695,7 @@ void Pump_Voltage_Set(u8 volt)
 		PUMP_CENTER_CLOSE;
 		PUMP_REAR_CLOSE;	
 		Device.LiquidSpeed = 0;
+		LED_OPERATION_OFF;
 	} else {
 		if(Device.PumpVoltage != volt) {
 			Device.PumpVoltage = volt;
@@ -704,6 +705,7 @@ void Pump_Voltage_Set(u8 volt)
 		PUMP_FRONT_OPEN;
 		PUMP_CENTER_OPEN;
 		PUMP_REAR_OPEN;	
+		LED_OPERATION_ON;
 	}
 }
 /************************************************************************************************

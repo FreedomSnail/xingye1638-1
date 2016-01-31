@@ -22,9 +22,17 @@
 #include "includes.h"
 
 
-OS_STK 		TaskDecodeStk[TASK_DECODE_STK_SIZE];
-OS_EVENT 	*DecodeQSem; 
-void     	*DecodeQMsgTbl[DECODE_RESOURCES];
+OS_STK 		TaskPwmCtrlPumpStk[TASK_PWM_CTRL_PUMP_STK_SIZE];
+OS_EVENT 	*UsartDjiCtrlPumpQsem; 
+void     	*UsartDJICtrlQMsgTbl[USART_DJI_CTRL_RESOURCES];
+
+
+
+OS_STK 		TaskCodecStk[TASK_PWM_CTRL_PUMP_STK_SIZE];
+OS_EVENT  	*SemDjiCodec;
+
+OS_EVENT  	*SemPWM;
+
 /************************************************************************************************
 ** Function name :			
 ** Description :
@@ -35,8 +43,55 @@ void     	*DecodeQMsgTbl[DECODE_RESOURCES];
 ** Others :
 ** 
 ************************************************************************************************/
-void Task_Decode(void* p_arg)
+void Task_Dji_SDK_Codec(void *p_arg)
 {
+	INT8U err;
+	p_arg = p_arg;
+	SemDjiCodec = OSSemCreate(0);
+	while(1) {
+		OSSemPend(SemDjiCodec,0,&err); 
+		if(OS_ERR_NONE == err) {
+			//LOG_DJI(".");
+			Pro_Receive_Interface();
+		}
+	}
+}
+
+/************************************************************************************************
+** Function name :			
+** Description :
+** 
+** Input :
+** Output :
+** Return :
+** Others :
+** 
+************************************************************************************************/
+void Task_PWM_Ctrl_Pump(void* p_arg)
+{
+#if 1
+	INT8U err;
+	p_arg = p_arg;
+	SemPWM = OSSemCreate(0);
+	if((GprsCmd.PermissionLocal == PERMISSION_PROHIBIT)||(GprsCmd.isSNSave == SN_SAVE_NO)) {
+		while(1) {
+			OSTimeDly(500);
+			LOG_DJI("\r\nPWM ctrl disable\r\n");
+		}
+	}
+	while(1) {
+		OSSemPend(SemPWM,10,&err); 
+		if(OS_ERR_NONE == err) {
+			if(Device.PWMPeriod<PWM_HIGHT_LEVEL_WIDTH_DOWN) {
+				Pump_Voltage_Set(0);
+			} else if(Device.PWMPeriod>PWM_HIGHT_LEVEL_WIDTH_UP){
+				Pump_Voltage_Set(PUMP_VOLTAGE_OUT);
+			}
+		} else {	// lose pwm signal
+			Pump_Voltage_Set(0);
+		}
+	}
+#else
 	INT8U err;
 	u8* msg;
 	u8 cnt;
@@ -46,26 +101,15 @@ void Task_Decode(void* p_arg)
 	u8  PumpLowCurrentFlag = 0;
 	
 	msg = msg;
-	DecodeQSem = OSQCreate(&DecodeQMsgTbl[0], DECODE_RESOURCES);
+	UsartDjiCtrlPumpQsem = OSQCreate(&UsartDJICtrlQMsgTbl[0], USART_DJI_CTRL_RESOURCES);
 	
-	DJI_Onboard__API_Activation_Init();
-	DJI_Onboard_API_Activation();
 	while (1) {
-		msg = (u8 *)OSQPend(DecodeQSem,  200, &err);
-		if(*msg == 1) {
-			Pro_Receive_Interface();//一帧数据接收完成
-			if((DataFromMobile.CommandSet == 0x00)&&(DataFromMobile.CommandId == 0x00)) {
-				LOG_SIM900("Activate ok!\r\n");//激活成功
-				break;
-			} else {
-				LOG_SIM900("Activate failed!\r\n");//激活失败
-			}
-		}
-		DJI_Onboard_API_Activation();
+		OSTimeDly(5);
 		if( Device.isA2 == PWM_RAISING_CNT) {	// A2版本，水泵只受PWM信号控制，PWM脉宽大于1500us时开启水泵，否则关闭
-			LOG_SIM900("Version is A2!\r\n");
+			LOG_DJI("Version is A2!\r\n");
 			while(1) {
-				OSTimeDly(1);
+				OSTimeDly(10);
+				LOG_DJI(".");
 				if(Device.PWMSignalCnt == 0) { 	//丢失PWM信号
 					Pump_Voltage_Set(0);
 				} else {
@@ -122,25 +166,16 @@ void Task_Decode(void* p_arg)
 				} else {
 					Device.isDoseRunOut = 0;
 				}
-				#if 0
-				cnt++;
-				if(cnt<100) {
-					LED_OPERATION_ON;
-				} else if(cnt<200) {
-					LED_OPERATION_OFF;
-				} else {
-					cnt = 0;
-				}
-				#endif
-				Log_test();
 			}
 		}
 	}
 	while (1) {
-		(u8 *)OSQPend(DecodeQSem,  10, &err);
+		(u8 *)OSQPend(UsartDjiCtrlPumpQsem,  10, &err);
 		if(err == OS_ERR_NONE) {
+			
 			Pro_Receive_Interface();//一帧数据接收完成
 			if((DataFromMobile.CommandSet == 0x02)&&(DataFromMobile.CommandId == 0x02)) {	//移动设备每隔500ms发一个包
+				LOG_DJI("received mobile data!\r\n");
 				Device.LoseRemoteSignalCnt = 200;
 				switch(DataFromMobile.data[0]) {
 					case '1':	//打开水泵
@@ -172,5 +207,44 @@ void Task_Decode(void* p_arg)
 		Device.PumpCurrent = Get_Pump_Current();
 		Send_Msg_2_M100();
 	}
+	#endif
+}
+
+/************************************************************************************************
+** Function name :			
+** Description :
+** 
+** Input :
+** Output :
+** Return :
+** Others :
+** 
+************************************************************************************************/
+void Task_Usart_DJI_Ctrl_Pump(void* p_arg)
+{
+	INT8U err;
+	u8* msg;
+	p_arg = p_arg;
+	UsartDjiCtrlPumpQsem = OSQCreate(&UsartDJICtrlQMsgTbl[0], USART_DJI_CTRL_RESOURCES);
+	if((GprsCmd.PermissionLocal == PERMISSION_PROHIBIT)||(GprsCmd.isSNSave == SN_SAVE_NO)) {
+		while(1) {
+			OSTimeDly(500);
+			LOG_DJI("\r\nUsart ctrl disable\r\n");
+		}
+	}
+	while(1) {
+		msg = OSQPend(UsartDjiCtrlPumpQsem,100,&err); 
+		
+		if(OS_ERR_NONE == err) {
+			if('1'==*msg) {
+				Pump_Voltage_Set(PUMP_VOLTAGE_OUT);
+			} else if('0'==*msg) {
+				Pump_Voltage_Set(0);
+			}
+		} else {	// lose usart signal
+			Pump_Voltage_Set(0);
+		}
+	}
+	
 }
 

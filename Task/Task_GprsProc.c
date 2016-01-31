@@ -41,6 +41,7 @@ void Task_Gprs_Proc(void* p_arg)
 	u8 end = CIPSEND_END_CHAR;
 	u8 GprsDataSend[GPRS_CMD_SEND_LENTH+1];
 	u8 offset;
+	u8 flag=0;
 	u16 timeout=100;
 	//u8 TryCheckChinaMobileCnt;		//尝试
 	//u8 TryConnectRemoteFailedCnt;		//尝试连接服务器失败次数
@@ -49,6 +50,12 @@ void Task_Gprs_Proc(void* p_arg)
 	//u8 GetRemoteDataSuccessCnt = 0;	//请求服务器数据成功次数
 	(void) p_arg;
 	GprsQSem = OSQCreate(&GprsQMsgTbl[0], GPRS_RESOURCES);
+	if(GprsCmd.isSNSave == SN_SAVE_NO) {
+		while(1) {
+			OSTimeDly(100);
+			LOG_SIM900("No SN,please write sn!\r\n");
+		}
+	}
 	while(1) {
 		OSQPend(GprsQSem,timeout,&err);
 		switch(err) {
@@ -100,17 +107,18 @@ void Task_Gprs_Proc(void* p_arg)
 								GprsCmd.PermissionLocal = GprsCmd.PermissionRemote;
 								Set_Product_Permission();
 								LOG_SIM900("Permission has saved!\r\n");
+								flag = 1;
 								#if 0
 								if(GprsCmd.PermissionLocal == PERMISSION_ALLOW) {	//获得使用权限
 									LOG_SIM900("重新获取权限!\r\n");
 									//建立编解码处理任务------------------------------------------------------
 								   	OSTaskCreateExt(Task_CODEC,
 								   					(void *)0,
-								   					(OS_STK *)&TaskDecodeStk[TASK_DECODE_STK_SIZE-1],
-								   					TASK_DECODE_PRIO,
-								   					TASK_DECODE_PRIO,
-								   					(OS_STK *)&TaskDecodeStk[0],
-										                    TASK_DECODE_STK_SIZE,
+								   					(OS_STK *)&TaskPwmCtrlPumpStk[TASK_PWM_CTRL_PUMP_STK_SIZE-1],
+								   					TASK_PWM_CTRL_PUMP_PRIO,
+								   					TASK_PWM_CTRL_PUMP_PRIO,
+								   					(OS_STK *)&TaskPwmCtrlPumpStk[0],
+										                    TASK_PWM_CTRL_PUMP_STK_SIZE,
 										                    (void *)0,
 										                    OS_TASK_OPT_STK_CHK|OS_TASK_OPT_STK_CLR); 
 
@@ -222,6 +230,10 @@ void Task_Gprs_Proc(void* p_arg)
 						break;
 					case GSM_CMD_STAGE_IDLE:
 						LOG_SIM900("Communicate Success!\r\n");
+						if(flag==1) {
+							LOG_SIM900("Permission is allow,please restart power!\r\n");
+						}
+						timeout = 1000;
 						break;
 					default:
 						break;
