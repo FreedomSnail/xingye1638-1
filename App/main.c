@@ -84,9 +84,22 @@ void Sys_Data_Init(void)
 	MCP41xxx_Write_RES(PUMP_VOLTAGE_OUT);
 	Uart2.DjiPackageStatus = DJI_PACKAGE_RECV_IDLE;
 	Uart2.WriteSnPackageStatus = WRITE_SN_PACKAGE_RECV_IDLE;
-	GsmCmd.GsmCmdStage = GSM_CMD_STAGE_AT_COPS;
-	
-	
+
+	pumpBoardInfo.isPumpRunning = 0;
+}
+uint64_t my_atoll(u8* str)
+{
+	uint64_t result=0;
+	while(*str) {
+		if((*str<'0')&&(*str>'9')) {
+			return 0;
+		} else {
+			result *= 10;
+			result += *str-'0';
+			str++;
+		}
+	}
+	return result;
 }
 /************************************************************************************************
 ** Function name :			
@@ -104,7 +117,7 @@ void BSP_Stage_2_Init(void)
 	PUMP_FRONT_CLOSE;
 	PUMP_CENTER_CLOSE;
  	PUMP_REAR_CLOSE;
-	//GprsCmd.PermissionLocal = PERMISSION_ALLOW;		
+	//GprsCmd.permission = PERMISSION_ALLOW;		
 	//Set_Product_Permission();
 	//Set_Product_Number("TXA1509280000097",TXA_SN_LENTH);
 	LOG_WRITE_SN("http://www.txauav.com\r\n");
@@ -112,13 +125,13 @@ void BSP_Stage_2_Init(void)
 		LOG_WRITE_SN("等待写码\r\n");
 		if(Get_Product_Number()==0) {
 			LOG_WRITE_SN("获取机身号码成功\r\n");
-			LOG_WRITE_SN(GprsCmd.SNLocal);
+			LOG_WRITE_SN(pumpBoardInfo.deviceSNStr);
 			LOG_WRITE_SN("\r\n");
 		} else {
 			LOG_WRITE_SN("读取机身号码失败\r\n");
-			memcpy(GprsCmd.SNLocal,"000000000000000000000",TXA_SN_LENTH);
+			memcpy(pumpBoardInfo.deviceSNStr,"000000000000000000000",TXA_SN_LENTH);
 		}
-		Device.Usart2Process = USART2_Write_SN_Process;
+		pumpBoardInfo.Usart2Process = USART2_Write_SN_Process;
 		OSTaskCreateExt(Task_Write_SN,
 						(void *)0,
 						(OS_STK *)&TaskWriteSNStk[TASK_WRITE_SN_SIZE-1],
@@ -132,26 +145,35 @@ void BSP_Stage_2_Init(void)
 		NVIC_Configuration();
 		return ;
 	}
-	Device.Usart2Process = USART2_DJI_Process;
+	pumpBoardInfo.Usart2Process = USART2_Flight_Board_Process;
 	LOG_WRITE_SN("读取本机机身号码....\r\n");
 	if(Get_Product_Number()==0) {
 		LOG_SIM900("获取机身号码成功\r\n");
-		LOG_SIM900(GprsCmd.SNLocal);
+		LOG_SIM900(pumpBoardInfo.deviceSNStr);
 		LOG_SIM900("\r\n");
-		GprsCmd.isSNSave = SN_SAVE_YES;
+		pumpBoardInfo.isSNSave = SN_SAVE_YES;
 	} else {
 		LOG_SIM900("读取机身号码失败\r\n");
-		memcpy(GprsCmd.SNLocal,"000000000000000000000",TXA_SN_LENTH);
-		GprsCmd.isSNSave = SN_SAVE_NO;
+		memcpy(pumpBoardInfo.deviceSNStr,"000000000000000000000",TXA_SN_LENTH);
+		pumpBoardInfo.isSNSave = SN_SAVE_NO;
+		pumpBoardInfo.deviceSN = 0;
 	}
+		//memcpy(kkk,&pumpBoardInfo.deviceSNStr[3],TXA_SN_LENTH-3);
+		//memcpy(pumpBoardInfo.deviceSNStr+3,"2601010550871",TXA_SN_LENTH-3);
+		
+		//pumpBoardInfo.deviceSN = atoll("1601010555501");
+		pumpBoardInfo.deviceSN = atoll(pumpBoardInfo.deviceSNStr+3);
+
+	//pumpBoardInfo.deviceSN = 1509280000097;
 	Get_Product_Permission();
 	memcpy(GprsCmd.BaseStationLongitude,"106.123456",GPRS_BASE_STATION_LONGITUDE_LENTH);
 	memcpy(GprsCmd.BaseStationLatitude,"21.123456",GPRS_BASE_STATION_LATITUDE_LENTH);
-	if(GprsCmd.PermissionLocal == PERMISSION_ALLOW) {	
+	if(pumpBoardInfo.permission == PERMISSION_ALLOW) {	
 		LOG_SIM900("授权允许\r\n");
 	} else {
 		LOG_SIM900("禁止授权\r\n");
 	}
+	
 
 	App_TaskCreate();
 	ADC_SoftwareStartConvCmd(ADC1, ENABLE);
@@ -181,7 +203,7 @@ void App_TaskStart(void* p_arg)
 	#endif
 	BSP_Stage_2_Init();   			//硬件平台第二阶段初始化
 	OSTimeDly(100);
-	Device.PumpCurrentRef = Get_Pump_Current_Ref();
+	pumpBoardInfo.PumpCurrentRef = Get_Pump_Current_Ref();
 	while (1) {
 		OSTimeDly(10);
 		LED_NIGHT_FLIGHT_ON;
@@ -205,7 +227,6 @@ void App_TaskStart(void* p_arg)
 ************************************************************************************************/
 void App_TaskCreate(void)
 {
-   	
 	OSTaskCreateExt(Task_Dji_SDK_Codec,
    					(void *)0,
    					(OS_STK *)&TaskCodecStk[TASK_CODEC_STK_SIZE-1],
@@ -215,19 +236,6 @@ void App_TaskCreate(void)
 		                    TASK_CODEC_STK_SIZE,
 		                    (void *)0,
 		                    OS_TASK_OPT_STK_CHK|OS_TASK_OPT_STK_CLR); 
-   	
-	
-	
-    OSTaskCreateExt(Task_Dji_Activation,
-   					(void *)0,
-   					(OS_STK *)&TASK_DJI_ACTIVATION_STK[TASK_DJI_ACTIVATION_STK_SIZE-1],
-   					TASK_DJI_ACTIVATION_PRIO,
-   					TASK_DJI_ACTIVATION_PRIO,
-   					(OS_STK *)&TASK_DJI_ACTIVATION_STK[0],
-		                    TASK_DJI_ACTIVATION_STK_SIZE,
-		                    (void *)0,
-		                    OS_TASK_OPT_STK_CHK|OS_TASK_OPT_STK_CLR);
-	
 	OSTaskCreateExt(Task_PWM_Ctrl_Pump,
    					(void *)0,
    					(OS_STK *)&TaskPwmCtrlPumpStk[TASK_PWM_CTRL_PUMP_STK_SIZE-1],
@@ -237,7 +245,25 @@ void App_TaskCreate(void)
 		                    TASK_PWM_CTRL_PUMP_STK_SIZE,
 		                    (void *)0,
 		                    OS_TASK_OPT_STK_CHK|OS_TASK_OPT_STK_CLR); 
-	            
+	OSTaskCreateExt(Task_Usart_DJI_Ctrl_Pump,
+   					(void *)0,
+   					(OS_STK *)&TaskUsartDjiCtrlPumpStk[TASK_USART_DJI_CTRL_PUMP_STK_SIZE-1],
+   					TASK_USART_DJI_CTRL_PUMP_PRIO,
+   					TASK_USART_DJI_CTRL_PUMP_PRIO,
+   					(OS_STK *)&TaskUsartDjiCtrlPumpStk[0],
+		                    TASK_USART_DJI_CTRL_PUMP_STK_SIZE,
+		                    (void *)0,
+		                    OS_TASK_OPT_STK_CHK|OS_TASK_OPT_STK_CLR);
+	OSTaskCreateExt(Task_Send_Pump_Board_Info,
+   					(void *)0,
+   					(OS_STK *)&TaskSendPumpBoardInfoStk[TASK_SEND_PUMP_BOARD_INFO_STK_SIZE-1],
+   					TASK_SEND_PUMP_BOARD_INFO_PRIO,
+   					TASK_SEND_PUMP_BOARD_INFO_PRIO,
+   					(OS_STK *)&TaskSendPumpBoardInfoStk[0],
+		                    TASK_SEND_PUMP_BOARD_INFO_STK_SIZE,
+		                    (void *)0,
+		                    OS_TASK_OPT_STK_CHK|OS_TASK_OPT_STK_CLR); 
+	#if 0	                    
 	OSTaskCreateExt(Task_Gprs_Proc,
    					(void *)0,
    					(OS_STK *)&TaskGprsProcStk[TASK_GPRS_PROC_STK_SIZE-1],
@@ -247,7 +273,7 @@ void App_TaskCreate(void)
 		                    TASK_GPRS_PROC_STK_SIZE,
 		                    (void *)0,
 		                    OS_TASK_OPT_STK_CHK|OS_TASK_OPT_STK_CLR);
-	#if 0		                    
+			                    
    	OSTaskCreateExt(Task_Write_SN,
    					(void *)0,
    					(OS_STK *)&TaskWriteSNStk[TASK_WRITE_SN_SIZE-1],

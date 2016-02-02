@@ -396,56 +396,42 @@ void USART_Send_Buf(USART_TypeDef* USARTx, u8* buf, u16 len)
 ** Others :
 ** 
 ************************************************************************************************/
-void USART2_DJI_Process(u8 Rev)
-{ 
-	u8 Msg = 0;
-	switch(Uart2.DjiPackageStatus) {
+void USART2_Flight_Board_Process(u8 Rev)
+{
+	
+	static DjiSDKPackageStatus_TypeEnum DjiPackageStatus = DJI_PACKAGE_RECV_IDLE;
+	
+	switch(DjiPackageStatus) {
 		case DJI_PACKAGE_RECV_IDLE:
-			 if(Rev == _SDK_SOF) {
-				 Uart2.RxIndex = 1;
-				 Uart2.DjiPackageStatus = DJI_PACKAGE_RECV_COMMAND_SET;
-				 memset(Uart2.RxDataBuf,0,RX_MAX_NUM);
-				 Uart2.RxDataBuf[0] = _SDK_SOF;
-			 }
-			 break;
-		case DJI_PACKAGE_RECV_COMMAND_SET:
-			 Uart2.RxDataBuf[Uart2.RxIndex] = Rev;
-			 if(Uart2.RxIndex == sizeof(SDKHeader)) {
-				 Uart2.DjiPackageStatus = DJI_PACKAGE_RECV_COMMAND_ID;
-			#if 0
-				 if(Rev == 0x00) {	  //命令集-激活验证类 -机载设备==>飞控
-					 Uart2.DjiPackageStatus = DJI_PACKAGE_RECV_COMMAND_ID;
-				 } else if(Rev == 0x02) { //命令集-推送数据类 - 飞控==>机载设备
-					 Uart2.DjiPackageStatus = DJI_PACKAGE_RECV_COMMAND_ID;
-				 } else {
-					 Uart2.DjiPackageStatus = DJI_PACKAGE_RECV_IDLE;
-				 }
-			#endif
-			 }
-			 Uart2.RxIndex++;
-			 break;
-		 case DJI_PACKAGE_RECV_COMMAND_ID:
-			 Uart2.RxDataBuf[Uart2.RxIndex++] = Rev;
-			 Uart2.DataLen = ((unsigned int)(0x03&&Uart2.RxDataBuf[2])<<8)+(unsigned int)Uart2.RxDataBuf[1];
-			 Uart2.DjiPackageStatus = DJI_PACKAGE_RECV_WAIT_DONE;
-			 break;
-		 case DJI_PACKAGE_RECV_WAIT_DONE:
-			 if(Uart2.RxIndex<RX_MAX_NUM) {
-				 Uart2.RxDataBuf[Uart2.RxIndex++] = Rev;
-				 if(Uart2.RxIndex == Uart2.DataLen) {
-					 Uart2.RxFlag = 1;
-					 //OSQPost(UsartDjiCtrlPumpQsem,(void *)&Msg);
-					 OSSemPost(SemDjiCodec);
-					 Uart2.DjiPackageStatus = DJI_PACKAGE_RECV_IDLE;
-				 }
-			 } else {//接收到的数据致使数组越界
-				 Uart2.DjiPackageStatus = DJI_PACKAGE_RECV_IDLE;
-			 }
-			 break;
-		 default:
-			 break;
-		 
+			if(Rev == _SDK_SOF) {
+				DjiPackageStatus = DJI_PACKAGE_RECV_START;
+				Uart2.RxIndex = 0;
+				Uart2.RxDataBuf[Uart2.RxIndex] = _SDK_SOF;
+			}
+			break;
+		case DJI_PACKAGE_RECV_START://收到0xAA紧跟的一个字符
+			Uart2.RxIndex++;
+			Uart2.RxDataBuf[Uart2.RxIndex] = Rev;
+			Uart2.DataLen = Rev;
+			DjiPackageStatus = DJI_PACKAGE_RECV_WAIT_DONE;
+			break;
+		case DJI_PACKAGE_RECV_WAIT_DONE:
+			Uart2.RxIndex++;
+			if(Uart2.RxIndex < RX_MAX_NUM) {
+				Uart2.RxDataBuf[Uart2.RxIndex] = Rev;
+				if(Uart2.RxIndex == Uart2.DataLen) {
+					OSSemPost(SemDjiCodec);
+					DjiPackageStatus = DJI_PACKAGE_RECV_IDLE;
+				}
+			} else {//接收到的数据致使数组越界
+				DjiPackageStatus = DJI_PACKAGE_RECV_IDLE;
+			}
+			break;
+		default:
+			break;
+		
 	}
+
 }
 /************************************************************************************************
 ** Function name :		  
@@ -491,10 +477,39 @@ void USART2_Write_SN_Process(u8 Rev)
 	} 
 }
 
+#if 0
+
+AA 1B 02 02 00 66 AE 77 41 33 17 C6 41 00 56 48 AA C3 74 01 00 00 00 6E EC B1 CA 
+AA 1B 02 02 00 9A 60 78 41 E6 34 C6 41 00 56 48 AA C3 74 01 00 00 00 34 BB 20 B7 
+AA 1B 02 02 00 00 73 77 41 33 17 C6 41 00 56 48 AA C3 74 01 00 00 00 C8 0C 23 C1 
+AA 1B 02 02 00 CD E9 77 41 80 F9 C5 41 00 56 48 AA C3 74 01 00 00 00 8A 77 BA CE 
+AA 1B 02 02 00 9A 37 77 41 80 F9 C5 41 00 56 48 AA C3 74 01 00 00 00 61 9E 05 0A 
+AA 1B 02 02 00 CD E9 77 41 E6 34 C6 41 00 56 48 AA C3 74 01 00 00 00 27 B5 F0 97 
+AA 1B 02 02 00 9A 60 78 41 CD DB C5 41 00 56 48 AA C3 74 01 00 00 00 8D 00 0B CB 
+AA 1B 02 02 00 33 FC 76 41 80 F9 C5 41 00 56 48 AA C3 74 01 00 00 00 AA F3 03 FD 
 
 
 
+AA 1B 02 02 00 00 73 77 41 9A 52 C6 41 00 FF 9F 72 4E 18 09 00 00 00 3F F5 6B 66 
+AA 1B 02 02 00 66 AE 77 41 CD DB C5 41 00 FF 9F 72 4E 18 09 00 00 00 CB 89 5E 7F 
+AA 1B 02 02 00 CD C0 76 41 33 17 C6 41 00 FF 9F 72 4E 18 09 00 00 00 8D 4C 49 BF 
+AA 1B 02 02 00 66 AE 77 41 33 17 C6 41 00 FF 9F 72 4E 18 09 00 00 00 5B 5F 1A 2D 
+AA 1B 02 02 00 00 73 77 41 E6 34 C6 41 00 FF 9F 72 4E 18 09 00 00 00 D4 D2 E7 08 
+AA 1B 02 02 00 33 25 78 41 33 17 C6 41 00 FF 9F 72 4E 18 09 00 00 00 0C AA 22 DC 
+AA 1B 02 02 00 66 AE 77 41 CD DB C5 41 00 FF 9F 72 4E 18 09 00 00 00 CB 89 5E 7F 
+AA 1B 02 02 00 CD C0 76 41 80 F9 C5 41 00 FF 9F 72 4E 18 09 00 00 00 09 E3 6C C8 
+AA 1B 02 02 00 9A 37 77 41 CD DB C5 41 00 FF 9F 72 4E 18 09 00 00 00 40 54 CF C8 
+AA 1B 02 02 00 00 73 77 41 33 17 C6 41 00 FF 9F 72 4E 18 09 00 00 00 FD BF 88 26 
+AA 1B 02 02 00 9A 37 77 41 80 F9 C5 41 00 FF 9F 72 4E 18 09 00 00 00 54 2D AE ED 
 
+不行的,是因为有多个AA出现，导致接收处理不正常
+AA 1B 02 02 00 33 FC 76 41 4D B8 CF 41 00 56 48 AA C3 74 01 00 00 00 AD 3B 1F 02 
+AA 1B 02 02 00 00 73 77 41 33 5F CF 41 00 56 48 AA C3 74 01 00 00 00 9F 74 04 BB 
+AA 1B 02 02 00 66 AE 77 41 9A 9A CF 41 00 56 48 AA C3 74 01 00 00 00 EC FB 1F 50 
+AA 1B 02 02 00 9A 37 77 41 33 5F CF 41 00 56 48 AA C3 74 01 00 00 00 B2 49 07 07 
+
+
+#endif
 
 
 

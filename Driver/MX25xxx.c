@@ -381,17 +381,17 @@ void Copy_System_Data_2_Flash(u32 DataTypeAddr)
 	switch(DataTypeAddr) {
 		case FLASH_ADDR_PRODUCT_NO:
 			sect_clr(FLASH_ADDR_PRODUCT_NO);	
-			MX25_Write(FLASH_ADDR_PRODUCT_NO, GprsCmd.SNLocal, TXA_SN_LENTH);
+			MX25_Write(FLASH_ADDR_PRODUCT_NO, pumpBoardInfo.deviceSNStr, TXA_SN_LENTH);
 			break;
 		case FLASH_ADDR_PERMISSION:
 			sect_clr(FLASH_ADDR_PERMISSION);	
 			#if 0
-			buf[0] = GprsCmd.PermissionLocal/256/256/256;		//第一个8位,枚举变量占用四个字节
-			buf[1] = GprsCmd.PermissionLocal/256/256%256;		//第二个8位
-			buf[2] = GprsCmd.PermissionLocal/256%256;			//第三个8位
-			buf[3] = GprsCmd.PermissionLocal%256;				//第四个8位
+			buf[0] = GprsCmd.permission/256/256/256;		//第一个8位,枚举变量占用四个字节
+			buf[1] = GprsCmd.permission/256/256%256;		//第二个8位
+			buf[2] = GprsCmd.permission/256%256;			//第三个8位
+			buf[3] = GprsCmd.permission%256;				//第四个8位
 			#endif
-			switch(GprsCmd.PermissionLocal) {
+			switch(pumpBoardInfo.permission) {
 				case PERMISSION_ALLOW:
 					buf[0] = 0x00;
 					break;
@@ -421,7 +421,7 @@ TXA1509280000000
 ************************************************************************************************/
 void Set_Product_Number(u8* sn, u8 Lenth)
 {
-	memcpy(GprsCmd.SNLocal,sn,Lenth);
+	memcpy(pumpBoardInfo.deviceSNStr,sn,Lenth);
 	Copy_System_Data_2_Flash(FLASH_ADDR_PRODUCT_NO);
 }
 /************************************************************************************************
@@ -439,13 +439,13 @@ TXA1509280000000
 u8 Get_Product_Number(void)
 {
 	u8 i;
-	MX25_Read(FLASH_ADDR_PRODUCT_NO, GprsCmd.SNLocal,TXA_SN_LENTH);
+	MX25_Read(FLASH_ADDR_PRODUCT_NO, pumpBoardInfo.deviceSNStr,TXA_SN_LENTH);
 	//检查格式是否正确
-	if((GprsCmd.SNLocal[0]!='T')||(GprsCmd.SNLocal[1]!='X')||(GprsCmd.SNLocal[2]!='A')) {
+	if((pumpBoardInfo.deviceSNStr[0]!='T')||(pumpBoardInfo.deviceSNStr[1]!='X')||(pumpBoardInfo.deviceSNStr[2]!='A')) {
 		return 1;
 	}
 	for(i=3;i<TXA_SN_LENTH;i++) {
-		if((GprsCmd.SNLocal[i]<'0')||(GprsCmd.SNLocal[i]>'9')) {
+		if((pumpBoardInfo.deviceSNStr[i]<'0')||(pumpBoardInfo.deviceSNStr[i]>'9')) {
 			return 1;
 		}
 	}
@@ -480,9 +480,9 @@ void Get_Product_Permission(void)
 	u8 FlashReadBuf[2];
 	MX25_Read(FLASH_ADDR_PERMISSION, FlashReadBuf,1);
 	if(FlashReadBuf[0]>0) {
-		GprsCmd.PermissionLocal = PERMISSION_PROHIBIT;
+		pumpBoardInfo.permission = PERMISSION_PROHIBIT;
 	} else {
-		GprsCmd.PermissionLocal = PERMISSION_ALLOW;
+		pumpBoardInfo.permission = PERMISSION_ALLOW;
 	}
 }
 

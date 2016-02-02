@@ -897,7 +897,6 @@ int Pro_Send_Interface(ProSendParameter *parameter)
 ** 
 ************************************************************************************************/
 static activation_data_t activation_msg = {14,2,0x02030A00,""};
-unsigned char str[50];
 
 /************************************************************************************************
 ** Function name :			
@@ -1085,7 +1084,7 @@ void DJI_Onboard_API_Activation(void)
 ************************************************************************************************/
 void DJI_Onboard_send(void)
 {
-	App_Send_Data( 2, 0, MY_ACTIVATION_SET,0xFE,(unsigned char*)&str,9);
+	//App_Send_Data( 2, 0, MY_ACTIVATION_SET,0xFE,(unsigned char*)&str,9);
 }
 
 void Pro_Receive_Interface(void)

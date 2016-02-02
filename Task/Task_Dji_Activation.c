@@ -35,8 +35,6 @@ OS_STK TASK_DJI_ACTIVATION_STK[TASK_DJI_ACTIVATION_STK_SIZE];
 void Task_Dji_Activation(void* p_arg)
 {
 	INT8U err;
-	u8 temp;
-	(void) p_arg;		//∑¿÷π±‡“Î∆˜æØ∏Ê
 	SemDjiActivation = OSSemCreate(0);
 	DJI_Onboard_API_Activation_Init();
 	while(1) {
@@ -49,15 +47,7 @@ void Task_Dji_Activation(void* p_arg)
 		}
 	}
 	while(1) {
-		OSTimeDly(10);
-		Adc_Filter();
-		Device.V6s = Get_6S_Val();
-		Device.V12s = Device.V6s;
-		Device.PumpCurrent = Get_Pump_Current();
-		temp = (u8)(Device.PumpCurrent*10);
-		//USART_OUT(SERIAL_PORT_DEBUG,"6s=%d\r\n",Device.V6s);
-		//USART_OUT(SERIAL_PORT_DEBUG,"c=%d\r\n",temp);
-		Send_Msg_2_M100();
+		OSTimeDly(1000);
 	}
 }
 

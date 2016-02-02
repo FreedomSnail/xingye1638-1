@@ -4,7 +4,7 @@
 
 
 #define		TASK_WRITE_SN_SIZE	128
-#define		TASK_WRITE_SN_PRIO	5
+#define		TASK_WRITE_SN_PRIO	10
 #define		WRITE_SN_RESOURCES	10
 
 
