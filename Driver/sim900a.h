@@ -6,7 +6,6 @@
 #define		GSM_RCV_MAX_NUM				50
 
 #define		CIPSEND_END_CHAR			0x1A	//→
-#define 	TXA_SN_LENTH		16
 #define 	GPRS_BASE_STATION_LONGITUDE_LENTH		10	
 #define 	GPRS_BASE_STATION_LATITUDE_LENTH		9	
 #define 	GPRS_CMD_SEND_LENTH						(TXA_SN_LENTH+GPRS_BASE_STATION_LONGITUDE_LENTH+GPRS_BASE_STATION_LATITUDE_LENTH+3)// 3个逗号
@@ -48,35 +47,25 @@ typedef enum
 
 typedef struct 
 {
-	GsmCmdStage_TypeEnum	GsmCmdStage;			//AT指令阶段
 	u8  RxFlag;
 	u8	RxIndex;									//计算接收个数
 	u8	RxDataBuf[GSM_RCV_MAX_NUM];					//接收一级缓存
 	u8	RxDataAt[GSM_RCV_MAX_NUM];					//接收二级缓存
 }GsmCmd_TypeDef;
 
-typedef enum {
-	PERMISSION_ALLOW,
-	PERMISSION_PROHIBIT
-}Permission_TypeEnum;
 
-typedef enum {
-	SN_SAVE_YES,
-	SN_SAVE_NO
-}IsSN_TypeEnum;
+
+
 
 
 typedef struct {
-	Permission_TypeEnum PermissionLocal;	//本地授权
-	Permission_TypeEnum PermissionRemote;	//服务器授权
 	
-	IsSN_TypeEnum isSNSave;					//是否保存有正确的机身编号
 	//u8  SNRemote[TXA_SN_LENTH];			//从服务器端接收到的机身编号
 	//u32 BaseStationLongitude;				//基站经度
 	//u32 BaseStationLatitude;				//基站纬度
 	u8 BaseStationLongitude[GPRS_BASE_STATION_LONGITUDE_LENTH];				//基站经度
 	u8 BaseStationLatitude[GPRS_BASE_STATION_LATITUDE_LENTH];				//基站纬度
-	u8  SNLocal[TXA_SN_LENTH];				//本地机身编号
+	
 }GprsCmd_TypeDef;
 
 extern	GsmCmd_TypeDef	GsmCmd;

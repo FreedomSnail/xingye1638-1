@@ -53,7 +53,8 @@
 
 #define	PUMP_VOLTAGE_OUT			PUMP_VOLTAGE_16V
 
-#define	PUMP_CURRENT_CRITICAL_POINT	0.9
+#define	PUMP_CURRENT_CRITICAL_POINT	1.0f	// 1A电流
+#define	SAME_CURRENT_STATUS_CNT	4
 
 
 
@@ -66,42 +67,68 @@
 
 #define	TIM2_OVER_FLOW_VALUE 50000
 
+#define DATA_LENGTH_RECEIVE_PUMP_CONTROL_BOARD	27
+#define DATA_LENGTH_SEND_PUMP_CONTROL_BOARD		13
+
+#define 	TXA_SN_LENTH		16
+#define 	DELAY_CHECK_PUMP_CURRENT_CNT		10
+
+
 typedef void (*pUsartProcess_t)(u8);
 
 
 typedef enum {
 	ONLINE,
 	OFFLINE
-}RemoteSignalStatus_TypeEnum;
+}SignalStatus_TypeEnum;
 
-typedef struct {
-	u8  isA2;			//DJI A2或者A3版本 
-	
-	
-	//u16 AmpInstant;	//电流瞬间值
-	//u16 AmpEverage;	//电流平均值
-	u16 Amp;
-	u16 V12s;			//如果检测到的电压是48.5v则用485来表示
-	u16 V6s;
-	
-	u16 PumpSwitch;		//水泵开关
-	u16	LiquidSpeed;
-	u16 Atomizer;
-	u16 AtomizerCurPWM;
-	u16 AtomizerTargetPWM;
-	u16 isDoseRunOut;	//农药量完 1 ，还有 0
+typedef enum {
+	PERMISSION_ALLOW,
+	PERMISSION_PROHIBIT
+}Permission_TypeEnum;
 
+typedef enum {
+	SN_SAVE_YES,
+	SN_SAVE_NO
+}IsSNSave_TypeEnum;
+
+typedef enum {
+	PUMP_STOP,
+	PUMP_RUNNING
+}isPumpRunning_TypeEnum;
+typedef enum {
+	DOSE_FULL,
+	DOSE_EMPTY
+}isDoseRunOut_TypeEnum;
+
+
+typedef struct
+{
+	Permission_TypeEnum permission;				//授权，是否可用
+	IsSNSave_TypeEnum isSNSave;					//是否保存有正确的机身编号
+
+	SignalStatus_TypeEnum  pwmOnlineFlag;	
+	SignalStatus_TypeEnum  remoteOnlineFlag;
+
+	
+	isPumpRunning_TypeEnum 	isPumpRunning;		//水泵是否工作
+	isDoseRunOut_TypeEnum 	isDoseRunOut;		//农药量是否耗尽
+					//机身编号
 	u16 PWMPeriod;
+	u16	LiquidSpeed;
+	u16	PumpDelayCheckCurrentFlag;			//滞后检查电流计数
+	u16	PumpDelayCheckCurrent;				//滞后检查电流计数
 	
-	//RemoteSignalStatus_TypeEnum RemoteSignalStatus;		//遥控器信号状态(未丢失和丢失)
-	u16 LoseRemoteSignalCnt;	//丢失遥控器信号计数 
-
-	u16 PumpVoltage;	//水泵电压
-	float PumpCurrentRef;	 //水泵电流基准值
-	float PumpCurrent;	//水泵电流
-
+	float PumpCurrentRef;	 				//水泵电流基准值
+	float PumpCurrent;						//水泵电流
+	float PumpVoltage;						//检测到的水泵电压
+	float targetPumpVoltage;
+	float supplyVoltage;					//供电电压，外部提供给水泵控制板的电压
+	
+	u8  deviceSNStr[TXA_SN_LENTH];			//机身编号字符串
+	uint64_t deviceSN;		
 	pUsartProcess_t Usart2Process;
-}Device_TypeDef;
+}pump_board_data_t;
 
 
 
@@ -109,7 +136,7 @@ extern vu16 AdcValue[][M]; //用来存放ADC转换结果，也是DMA的目标地址
 extern vu16 AfterFilter[]; //用来存放求平均值之后的结果
 
 
-extern Device_TypeDef Device;
+extern pump_board_data_t pumpBoardInfo;
 
 
 
@@ -131,8 +158,15 @@ void BSP_Stage_1_Init(void);
 void Adc_Filter(void);
 float Get_Pump_Current_Ref(void);
 float Get_Pump_Current(void);
-u16 Get_6S_Val(void);
+float Get_Supply_Voltage(void);
+float Get_Pump_Voltage(void);
 void Pump_Voltage_Set(u8 volt);
 void Log_test(void);
 void Send_Msg_2_M100(void);
+
+void send_cmd_to_flight_ctrl_board(u8* str,u8 len);
+
+void Pro_Receive_Flight_Ctrl_Board(void);
+
+
 #endif

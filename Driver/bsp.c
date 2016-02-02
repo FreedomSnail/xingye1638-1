@@ -23,7 +23,7 @@
 vu16 AdcValue[N][M]; //用来存放ADC转换结果，也是DMA的目标地址
 vu16 AfterFilter[M]; //用来存放求平均值之后的结果
 
-Device_TypeDef Device;
+pump_board_data_t pumpBoardInfo;
 /************************************************************************************************
 ** Function name :			
 ** Description :配置48M系统时钟
@@ -561,7 +561,7 @@ void BSP_Stage_1_Init(void)
   	GPIO_Configuration();				//配IO口
 	DMA_Configuration();
 	ADC1_Configuration();
-	USART2_Config(SERIAL_PORT_DJI_SDK,115200);		//串口2初始化,DJI_SDK接口
+	USART2_Config(SERIAL_PORT_FLIGHT_CTRL_BOARD,115200);		//串口2初始化,DJI_SDK接口
 	USART3_Config(SERIAL_PORT_SIM900A,9600);		//串口3初始化,SIM900A接口
 	UART4_Config(SERIAL_PORT_DEBUG,115200);		//串口4初始化，调试接口
 	SPI_Flash_Init();					//SPI模块，用来读写外部flash芯片
@@ -642,13 +642,13 @@ float Get_Pump_Current(void)
 	ADC_ConvertedValue= AfterFilter[0];//计算电流
 	ADC_ConvertedValue = ADC_ConvertedValue*3.3/4096;
 	// 5v供电
-	if(ADC_ConvertedValue<Device.PumpCurrentRef) {
+	if(ADC_ConvertedValue<pumpBoardInfo.PumpCurrentRef) {
 		Amp = 0;
-	} else if(ADC_ConvertedValue<(Device.PumpCurrentRef+2.5*0.185)) { // (2500+5*185)/2=1712
-		ADC_ConvertedValue = (ADC_ConvertedValue-Device.PumpCurrentRef)*2;
+	} else if(ADC_ConvertedValue<(pumpBoardInfo.PumpCurrentRef+2.5*0.185)) { // (2500+5*185)/2=1712
+		ADC_ConvertedValue = (ADC_ConvertedValue-pumpBoardInfo.PumpCurrentRef)*2;
 		Amp = ADC_ConvertedValue/0.185;
 	} else {
-		Amp = 5;	// 50代表5A
+		Amp = 5.0f;	
 	}
 	return Amp;
 }
@@ -661,16 +661,36 @@ float Get_Pump_Current(void)
 ** Output :
 ** Return :
 ** Others :
-** 获取6S电压值
+** 获取电源输入电压值
 ************************************************************************************************/
-u16 Get_6S_Val(void)
+float Get_Supply_Voltage(void)
 {
 	float ADC_ConvertedValue;
 	Adc_Filter();
 	ADC_ConvertedValue= AfterFilter[2];//计算6s电压
-	ADC_ConvertedValue = ADC_ConvertedValue/4096*3.3*180+0.5;	//四舍五入处理
-	return (u16)ADC_ConvertedValue;
+	ADC_ConvertedValue = ADC_ConvertedValue/4096*3.3*18+0.05;	//四舍五入处理
+	return ADC_ConvertedValue;
 }
+
+/************************************************************************************************
+** Function name :			
+** Description :
+** 
+** Input :
+** Output :
+** Return :
+** Others :
+** 获取水泵工作电压值
+************************************************************************************************/
+float Get_Pump_Voltage(void)
+{
+	float ADC_ConvertedValue;
+	Adc_Filter();
+	ADC_ConvertedValue= AfterFilter[1];//计算水泵电压
+	ADC_ConvertedValue = ADC_ConvertedValue/4096*3.3*18+0.05;	//四舍五入处理
+	return ADC_ConvertedValue;
+}
+
 /************************************************************************************************
 ** Function name :			
 ** Description :
@@ -690,18 +710,22 @@ u16 Get_6S_Val(void)
 ************************************************************************************************/
 void Pump_Voltage_Set(u8 volt)
 {
+	static u8 voltageRecord=0;
 	if(volt == 0) {
 		PUMP_FRONT_CLOSE;
 		PUMP_CENTER_CLOSE;
 		PUMP_REAR_CLOSE;	
-		Device.LiquidSpeed = 0;
+		pumpBoardInfo.LiquidSpeed = 0;
+		pumpBoardInfo.isPumpRunning = PUMP_STOP;
 		LED_OPERATION_OFF;
 	} else {
-		if(Device.PumpVoltage != volt) {
-			Device.PumpVoltage = volt;
-			MCP41xxx_Write_RES(Device.PumpVoltage);
+		if(voltageRecord != volt) {
+			voltageRecord = volt;
+			MCP41xxx_Write_RES(volt);
+			
 		}
-		Device.LiquidSpeed = 80;
+		pumpBoardInfo.LiquidSpeed = 80;
+		pumpBoardInfo.isPumpRunning = PUMP_RUNNING;
 		PUMP_FRONT_OPEN;
 		PUMP_CENTER_OPEN;
 		PUMP_REAR_OPEN;	
@@ -716,31 +740,20 @@ void Pump_Voltage_Set(u8 volt)
 ** Output :
 ** Return :
 ** Others :
-**
+** 
 ************************************************************************************************/
-void Log_test(void)
+void send_cmd_to_flight_ctrl_board(u8* str,u8 len)
 {
-	u8 Str[]="$24.0V,24.0V,0.0A,0*xx\r\n";// 6S电压，水泵电压，水泵电流，农药是否已尽
-	*Str = *Str;	//防止编译警告
-	Str[1] = '0'+Device.V6s/100;
-	Str[2] = '0'+Device.V6s/10%10;
-	Str[4] = '0'+Device.V6s%10;
-
-	Str[7] = '0'+Device.PumpVoltage/100;
-	Str[8] = '0'+Device.PumpVoltage/10%10;
-	Str[10] = '0'+Device.PumpVoltage%10;
-
-
-	Str[13] = '0'+(u8)Device.PumpCurrent;
-	Str[15] = '0'+(u8)(Device.PumpCurrent*10)%10;
-
-	if(Device.isDoseRunOut) {
-		Str[18] = '1';
-	} else {
-		Str[18] = '0';
-	}
-	 
-	LOG_ADC(Str);
+	union toInt{
+	    unsigned char bytePtr[4];
+	    uint32_t value;
+	}a;
+	a.value = sdk_stream_crc32_calc(str,len-_SDK_CRC_DATA_SIZE);
+	*(str+len-_SDK_CRC_DATA_SIZE)   = a.bytePtr[0];
+	*(str+len-_SDK_CRC_DATA_SIZE+1) = a.bytePtr[1];
+	*(str+len-_SDK_CRC_DATA_SIZE+2) = a.bytePtr[2];
+	*(str+len-_SDK_CRC_DATA_SIZE+3) = a.bytePtr[3];
+	USART_Send_Buf(SERIAL_PORT_FLIGHT_CTRL_BOARD,str,len);
 }
 /************************************************************************************************
 ** Function name :			
@@ -750,44 +763,46 @@ void Log_test(void)
 ** Output :
 ** Return :
 ** Others :
-**
+** 
+	与水泵控制板的串口数据通讯协议说明(借鉴djisdk协议)
+
+协议帧
+	|<帧头段>|<-帧数据段->|<--帧尾段-->|
+	|SOF |LEN|    DATA    |    CRC32   |
+帧结构
+字段	索引（byte）	大小（bit）		说明
+SOF			0				8			帧起始标识，固定为0xAA
+LEN			1				8			帧长度标识
+DATA		2			长度不定		帧数据段
+CRC32	大小不定			32			整个帧的 CRC32 校验值
+
+数据帧
+|<-------帧数据段------->|
+|CMD SET|CMD ID|CMD VALUE|
+命令集 0x00 命令码 0xFE 透传数据（飞控板至水泵控制板）
+CMD VALUE由[水泵开关状态8bit]+[水泵电压32bit]组成
+帧长度 13字节
+
+命令集 0x02 命令码 0x02 透传数据（水泵控制板至飞控板）
+CMD VALUE由[水泵开关状态8bit]+[水泵电压32bit]+[供电电压32bit]+[农药量状态8bit]
++[机身编码64bit]+[授权状态8bit]组成
+帧长度 27字节
+
 ************************************************************************************************/
-void Send_Msg_2_M100(void)
+void Pro_Receive_Flight_Ctrl_Board(void)
 {
-	//u8 Str[]="$LIQUID,24.0V,24.0V,100A,000,000*xx\r\n";// 6S电压，6s电压，总电流，水泵开合程度(pwm占空比)，雾化器开合程度
-	//str[0] = "123456789";
-	//memcpy(str,"123456789",9);
-	#if 1
-	// 第一二个字节是12s电压值，第三四个字节是其中一边的6s电压，具体见如下索引
-	// 字节索引   大小(单位byte)   说明
-	// 0			2				12s电压
-	// 2			2				6s电压
-	// 4			2				电流
-	// 6			1				喷头速度
-	// 7			1				雾化器速度
-	// 8			1				是否药尽
-	// 9			1				包序号
-	//注:安卓上位机接收使用的是byte变量(范围-128~127),为了方便上位机的代码编写，这里使用128进制表示发送
-	str[0] = Device.V12s/128;
-	str[1] = Device.V12s%128;
-	
-	str[2] = Device.V6s/128;
-	str[3] = Device.V6s%128;
-
-	str[4] = Device.Amp/128;
-	str[5] = Device.Amp%128;
-	
-	//str[4] = 50;
-	
-	str[6] = Device.LiquidSpeed;
-	//str[6] = 80;
-
-	str[7] = Device.Atomizer;
-
-	str[8] = Device.isDoseRunOut;
-	str[9]++;
-	#endif
-	
-	DJI_Onboard_send();
+	u8 msg[5];
+  	int Heard_CRC32=0;
+	memcpy(&Heard_CRC32,&Uart2.RxDataBuf[Uart2.DataLen - _SDK_CRC_DATA_SIZE] ,_SDK_CRC_DATA_SIZE);
+	if(Uart2.DataLen != DATA_LENGTH_SEND_PUMP_CONTROL_BOARD) {	//检查数据长度是否一致
+		return;
+	}
+	if(sdk_stream_crc32_calc((unsigned char*)Uart2.RxDataBuf, Uart2.DataLen - _SDK_CRC_DATA_SIZE)!=Heard_CRC32) {
+		return;//整体校验
+	}
+	//pumpBoardInfo.isPumpRunning = Uart2.RxDataBuf[4];
+	//memcpy((unsigned char*)&pumpBoardInfo.pump_voltage,Uart2.RxDataBuf+5,4);	//水泵电压
+	memcpy(msg,Uart2.RxDataBuf+4,5);
+	OSQPost(UsartDjiCtrlPumpQsem, (void*)(&msg));
 }
 

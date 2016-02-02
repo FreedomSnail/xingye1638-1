@@ -532,7 +532,7 @@ void TIM2_IRQHandler(void)
 				temp = TIM2_OVER_FLOW_VALUE  - PWMFallingTime + PWMRaisingTime;
 			}
 		}	
-		Device.PWMPeriod= temp;
+		pumpBoardInfo.PWMPeriod= temp;
 		OSSemPost(SemPWM);
 		TIM_ClearITPendingBit(TIM2, TIM_IT_CC2);
 	} 
@@ -678,65 +678,13 @@ void USART2_IRQHandler(void)
 {
 	CPU_SR cpu_sr;
 	u8 Rev;
-	u8 Msg = 1;
 	OS_ENTER_CRITICAL();
 	OSIntNesting++;
 	OS_EXIT_CRITICAL();
 	//用户程序..
-	if(USART_GetITStatus(SERIAL_PORT_DJI_SDK, USART_IT_RXNE) != RESET) {	//判断读寄存器是否非空	
-    	// Read one byte from the receive data register
-    	Rev= USART_ReceiveData(SERIAL_PORT_DJI_SDK);   //将读寄存器的数据缓存到接收缓冲区里
-		//USART_SendData(SERIAL_PORT_DJI_SDK,Rev);
-		//while(USART_GetFlagStatus(SERIAL_PORT_DJI_SDK, USART_FLAG_TC)==RESET);
-		(*Device.Usart2Process)(Rev);
-		#if 0
-		switch(Uart2.DjiPackageStatus) {
-			case DJI_PACKAGE_RECV_IDLE:
-				if(Rev == _SDK_SOF) {
-			 		Uart2.RxIndex = 1;
-			 		Uart2.DjiPackageStatus = DJI_PACKAGE_RECV_COMMAND_SET;
-			 		memset(Uart2.RxDataBuf,0,RX_MAX_NUM);
-			 		Uart2.RxDataBuf[0] = _SDK_SOF;
-		 		}
-		 		break;
-			case DJI_PACKAGE_RECV_COMMAND_SET:
-		 		Uart2.RxDataBuf[Uart2.RxIndex] = Rev;
-		 		if(Uart2.RxIndex == sizeof(SDKHeader)) {
-			 		Uart2.DjiPackageStatus = DJI_PACKAGE_RECV_COMMAND_ID;
-					#if 0
-					if(Rev == 0x00) {	 //命令集-激活验证类 -机载设备==>飞控
-						Uart2.DjiPackageStatus = DJI_PACKAGE_RECV_COMMAND_ID;
-					} else if(Rev == 0x02) { //命令集-推送数据类 - 飞控==>机载设备
-						Uart2.DjiPackageStatus = DJI_PACKAGE_RECV_COMMAND_ID;
-					} else {
-						Uart2.DjiPackageStatus = DJI_PACKAGE_RECV_IDLE;
-					}
-					#endif
-		 		}
-		 		Uart2.RxIndex++;
-	 			break;
-			case DJI_PACKAGE_RECV_COMMAND_ID:
-				Uart2.RxDataBuf[Uart2.RxIndex++] = Rev;
-				Uart2.DataLen = ((unsigned int)(0x03&&Uart2.RxDataBuf[2])<<8)+(unsigned int)Uart2.RxDataBuf[1];
-				Uart2.DjiPackageStatus = DJI_PACKAGE_RECV_WAIT_DONE;
-	 			break;
-			case DJI_PACKAGE_RECV_WAIT_DONE:
-	 			if(Uart2.RxIndex<RX_MAX_NUM) {
-		 			Uart2.RxDataBuf[Uart2.RxIndex++] = Rev;
-		 			if(Uart2.RxIndex == Uart2.DataLen) {
-			 			Uart2.RxFlag = 1;
-			 			OSQPost(UsartDjiCtrlPumpQsem,(void *)&Msg);
-			 			Uart2.DjiPackageStatus = DJI_PACKAGE_RECV_IDLE;
-		 			}
-	 			} else {//接收到的数据致使数组越界
-		 			Uart2.DjiPackageStatus = DJI_PACKAGE_RECV_IDLE;
-	 			}
-	 			break;
-			default:
-		 		break;
-			
-		}
-		#endif
+	if(USART_GetITStatus(SERIAL_PORT_FLIGHT_CTRL_BOARD, USART_IT_RXNE) != RESET) {	//判断读寄存器是否非空	
+    	Rev= USART_ReceiveData(SERIAL_PORT_FLIGHT_CTRL_BOARD);   //将读寄存器的数据缓存到接收缓冲区里
+		(*pumpBoardInfo.Usart2Process)(Rev);
   	}
 	//用户程序..
 	OSIntExit();

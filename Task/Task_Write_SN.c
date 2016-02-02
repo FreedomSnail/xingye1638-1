@@ -57,18 +57,18 @@ void Task_Write_SN(void* p_arg)
 			}
 			if(err == 0) {	//格式正确
 				LOG_WRITE_SN("格式正确，写入\r\n");
-				USART_OUT(SERIAL_PORT_DJI_SDK,"TEST\r\n");
+				USART_OUT(SERIAL_PORT_FLIGHT_CTRL_BOARD,"TEST\r\n");
 				Set_Product_Number(Uart2.RxDataSecondBuf,TXA_SN_LENTH);
-				GprsCmd.PermissionLocal = PERMISSION_ALLOW;
+				pumpBoardInfo.permission = PERMISSION_ALLOW;
 				Set_Product_Permission();
 			} else {
 				LOG_WRITE_SN("格式错误，请重新写入\r\n");
 			}
 		} 
 		//LOG_WRITE_SN("等待写码输入....\r\n");
-		LOG_WRITE_SN(GprsCmd.SNLocal);
+		LOG_WRITE_SN(pumpBoardInfo.deviceSNStr);
 		LOG_WRITE_SN("\r\n");
-		SEND_SN_2_WIFI(GprsCmd.SNLocal);
+		SEND_SN_2_WIFI(pumpBoardInfo.deviceSNStr);
 		SEND_SN_2_WIFI("\r\n");
 	}
 }

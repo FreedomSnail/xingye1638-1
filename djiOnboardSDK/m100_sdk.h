@@ -121,14 +121,13 @@ typedef struct ProFrameData_Unit
 
 
 
-extern unsigned char str[];
 extern ProFrameData_Unit  DataFromMobile;
 
 
 
 //uint16_t sdk_stream_crc16_calc(const uint8_t* pMsg, uint32_t nLen);
 
-//uint32_t sdk_stream_crc32_calc(const uint8_t* pMsg, uint32_t nLen);
+uint32_t sdk_stream_crc32_calc(const uint8_t* pMsg, uint32_t nLen);
 void DJI_Onboard_API_Activation_Init(void);
 void DJI_Onboard_API_Activation(void);
 void DJI_Onboard_send(void);

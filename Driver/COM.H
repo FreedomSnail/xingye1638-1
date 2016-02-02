@@ -3,7 +3,7 @@
 
 #define		RX_MAX_NUM				100
 
-#define	SERIAL_PORT_DJI_SDK		USART2
+#define	SERIAL_PORT_FLIGHT_CTRL_BOARD		USART2
 #define	SERIAL_PORT_SIM900A		USART3
 #define	SERIAL_PORT_DEBUG		UART4
 
@@ -13,7 +13,7 @@
 
 #define LOG_ADC(s) 				//USART_OUT(SERIAL_PORT_DEBUG,s)
 #define LOG_WRITE_SN(s) 		USART_OUT(SERIAL_PORT_DEBUG,s)
-#define	SEND_SN_2_WIFI(s)		USART_OUT(SERIAL_PORT_DJI_SDK,s)
+#define	SEND_SN_2_WIFI(s)		USART_OUT(SERIAL_PORT_FLIGHT_CTRL_BOARD,s)
 
 typedef enum
 {
@@ -62,7 +62,7 @@ void UART4_Config(USART_TypeDef* USARTx,u32 baud);
 void USART_OUT(USART_TypeDef* USARTx, uint8_t *Data,...);
 char *itoa(long value, char *string, int radix);
 void USART_Send_Buf(USART_TypeDef* USARTx, u8* buf, u16 len);
-void USART2_DJI_Process(u8 Rev);
+void USART2_Flight_Board_Process(u8 Rev);
 void USART2_Write_SN_Process(u8 Recv);
 
 #endif
