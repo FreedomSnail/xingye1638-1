@@ -85,7 +85,7 @@ void Sys_Data_Init(void)
 	Uart2.DjiPackageStatus = DJI_PACKAGE_RECV_IDLE;
 	Uart2.WriteSnPackageStatus = WRITE_SN_PACKAGE_RECV_IDLE;
 
-	pumpBoardInfo.isPumpRunning = 0;
+	pumpBoardInfo.isPumpRunning = PUMP_STOP;
 }
 uint64_t my_atoll(u8* str)
 {
@@ -162,7 +162,7 @@ void BSP_Stage_2_Init(void)
 		//memcpy(pumpBoardInfo.deviceSNStr+3,"2601010550871",TXA_SN_LENTH-3);
 		
 		//pumpBoardInfo.deviceSN = atoll("1601010555501");
-		pumpBoardInfo.deviceSN = atoll(pumpBoardInfo.deviceSNStr+3);
+		pumpBoardInfo.deviceSN = atoll((const char*)pumpBoardInfo.deviceSNStr+3);
 
 	//pumpBoardInfo.deviceSN = 1509280000097;
 	Get_Product_Permission();
@@ -263,7 +263,7 @@ void App_TaskCreate(void)
 		                    TASK_SEND_PUMP_BOARD_INFO_STK_SIZE,
 		                    (void *)0,
 		                    OS_TASK_OPT_STK_CHK|OS_TASK_OPT_STK_CLR); 
-	#if 0	                    
+	#if 1	                    
 	OSTaskCreateExt(Task_Gprs_Proc,
    					(void *)0,
    					(OS_STK *)&TaskGprsProcStk[TASK_GPRS_PROC_STK_SIZE-1],
