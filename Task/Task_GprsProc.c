@@ -55,7 +55,7 @@ void Task_Gprs_Proc(void* p_arg)
 	if(pumpBoardInfo.isSNSave == SN_SAVE_NO) {
 		while(1) {
 			OSTimeDly(100);
-			LOG_SIM900("No SN,please write sn!\r\n");
+			LOG_SIM900("No SN,gprs task not start!\r\n");
 		}
 	}
 	while(1) {

@@ -102,6 +102,17 @@ typedef enum {
 	DOSE_EMPTY
 }isDoseRunOut_TypeEnum;
 
+typedef enum {
+	BEEP_TIP_MUTE,
+	BEEP_TIP_POWER_ON,
+	BEEP_TIP_NO_SN,
+	BEEP_TIP_NO_PERMISSION,
+	BEEP_TIP_NORMAL_PWM_SIGNAL,
+	BEEP_TIP_NORMAL_USART_SIGNAL,
+	BEEP_TIP_LOSE_PWM_SIGNAL,
+	BEEP_TIP_LOSE_USART_SIGNAL
+}beepTip_TypeEnum;
+
 
 typedef struct
 {
@@ -114,6 +125,8 @@ typedef struct
 	
 	isPumpRunning_TypeEnum 	isPumpRunning;		//水泵是否工作
 	isDoseRunOut_TypeEnum 	isDoseRunOut;		//农药量是否耗尽
+
+	beepTip_TypeEnum beepTip;
 					//机身编号
 	u16 PWMPeriod;
 	u16	LiquidSpeed;
