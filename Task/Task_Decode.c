@@ -90,6 +90,9 @@ void Pump_Delay_Check_Reset(void)
 void Task_PWM_Ctrl_Pump(void* p_arg)
 {
 	INT8U err;
+	u8 pwmCnt=0;
+	u8 pwmOffCnt = 0;
+	u8 pwmOnCnt = 0;
 	p_arg = p_arg;
 	SemPWM = OSSemCreate(0);
 	if((pumpBoardInfo.permission == PERMISSION_PROHIBIT)||(pumpBoardInfo.isSNSave == SN_SAVE_NO)) {
@@ -102,10 +105,21 @@ void Task_PWM_Ctrl_Pump(void* p_arg)
 		OSSemPend(SemPWM,10,&err); 
 		if(pumpBoardInfo.remoteOnlineFlag == OFFLINE) {
 			if(OS_ERR_NONE == err) {
-				if(pumpBoardInfo.PWMPeriod<PWM_HIGHT_LEVEL_WIDTH_DOWN) {
-					Pump_Voltage_Set(0);
-				} else if(pumpBoardInfo.PWMPeriod>PWM_HIGHT_LEVEL_WIDTH_UP){
-					Pump_Voltage_Set(PUMP_VOLTAGE_OUT);
+				if( pwmCnt<10 ) {
+					pwmCnt++;
+					if(pumpBoardInfo.PWMPeriod<PWM_HIGHT_LEVEL_WIDTH_DOWN) {
+						pwmOffCnt++;
+					} else if(pumpBoardInfo.PWMPeriod>PWM_HIGHT_LEVEL_WIDTH_UP){
+						pwmOnCnt ++;
+					}
+				} else {
+					pwmCnt = 0;
+					if(pwmOffCnt>7) {
+						Pump_Voltage_Set(0);
+					} else if(pwmOnCnt>7) {
+						Pump_Voltage_Set(PUMP_VOLTAGE_OUT);
+					}
+					pwmOffCnt = pwmOnCnt = 0;
 				}
 				pumpBoardInfo.pwmOnlineFlag = ONLINE;
 			} else {	// lose pwm signal

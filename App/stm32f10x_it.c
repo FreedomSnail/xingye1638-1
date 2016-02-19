@@ -518,7 +518,7 @@ void TIM2_IRQHandler(void)
 	if(TIM_GetITStatus(TIM2,TIM_IT_CC1) == SET) {	//下降沿中断,经过三级管倒相了 
 		PWMFallingTime = TIM_GetCapture1(TIM2);
 		TIM_ClearITPendingBit(TIM2, TIM_IT_CC1);
-	} else {
+	} else if(TIM_GetITStatus(TIM2,TIM_IT_CC2) == SET){
 		PWMRaisingTime = TIM_GetCapture2(TIM2);
 		
 		if(PWMRaisingTime > PWMFallingTime) {
