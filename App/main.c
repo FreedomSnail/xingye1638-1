@@ -168,13 +168,12 @@ void BSP_Stage_2_Init(void)
 	Get_Product_Permission();
 	memcpy(GprsCmd.BaseStationLongitude,"106.123456",GPRS_BASE_STATION_LONGITUDE_LENTH);
 	memcpy(GprsCmd.BaseStationLatitude,"21.123456",GPRS_BASE_STATION_LATITUDE_LENTH);
+	
 	if(pumpBoardInfo.permission == PERMISSION_ALLOW) {	
 		LOG_SIM900("授权允许\r\n");
 	} else {
 		LOG_SIM900("禁止授权\r\n");
 	}
-	
-
 	App_TaskCreate();
 	ADC_SoftwareStartConvCmd(ADC1, ENABLE);
 	DMA_Cmd(DMA1_Channel1, ENABLE); //启动DMA通道

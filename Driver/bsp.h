@@ -4,8 +4,9 @@
 #define	BEEP_PORT_RCC_ENABLE 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE)
 #define	BEEP_PORT				GPIOC
 #define	BEEP_PIN				GPIO_Pin_13
-#define BEEP_OFF  				BEEP_PORT->BSRR = BEEP_PIN	//BSRR设置使cpu的io口出高电平
-#define BEEP_ON					BEEP_PORT->BRR  = BEEP_PIN
+#define BEEP_OFF  				BEEP_PORT->BRR  = BEEP_PIN
+#define BEEP_ON					BEEP_PORT->BSRR = BEEP_PIN	//BSRR设置使cpu的io口出高电平
+
 
 
 

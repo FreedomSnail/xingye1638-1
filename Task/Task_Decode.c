@@ -98,7 +98,7 @@ void Task_PWM_Ctrl_Pump(void* p_arg)
 	if((pumpBoardInfo.permission == PERMISSION_PROHIBIT)||(pumpBoardInfo.isSNSave == SN_SAVE_NO)) {
 		while(1) {
 			OSTimeDly(500);
-			LOG_DJI("\r\nPWM ctrl disable\r\n");
+			//LOG_DJI("\r\nPWM ctrl disable\r\n");
 		}
 	}
 	while(1) {
@@ -145,10 +145,31 @@ void Task_Usart_DJI_Ctrl_Pump(void* p_arg)
 	u8* msg;
 	p_arg = p_arg;
 	UsartDjiCtrlPumpQsem = OSQCreate(&UsartDJICtrlQMsgTbl[0], USART_DJI_CTRL_RESOURCES);
-	if((pumpBoardInfo.permission == PERMISSION_PROHIBIT)||(pumpBoardInfo.isSNSave == SN_SAVE_NO)) {
+	if(pumpBoardInfo.isSNSave == SN_SAVE_NO) {	//没有写入机身号码时报警声音为1秒一响
 		while(1) {
-			OSTimeDly(500);
-			LOG_DJI("\r\nUsart ctrl disable\r\n");
+			BEEP_OFF;
+			OSTimeDly(90);
+			BEEP_ON;
+			OSTimeDly(10);
+			LOG_DJI("\r\nNo sn save!\r\n");
+		}
+	} else  {
+		if(pumpBoardInfo.permission == PERMISSION_PROHIBIT) {//没有授权许可时的报警声音为3秒两响
+			while(1) {
+				BEEP_OFF;
+				OSTimeDly(280);
+				BEEP_ON;
+				OSTimeDly(6);
+				BEEP_OFF;
+				OSTimeDly(8);
+				BEEP_ON;
+				OSTimeDly(6);
+				LOG_DJI("\r\nNo permission!\r\n");
+			}
+		} else {	//通过则叫一声
+			BEEP_ON;
+			OSTimeDly(80);
+			BEEP_OFF;
 		}
 	}
 	while(1) {
