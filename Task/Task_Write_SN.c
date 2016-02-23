@@ -61,8 +61,15 @@ void Task_Write_SN(void* p_arg)
 				Set_Product_Number(Uart2.RxDataSecondBuf,TXA_SN_LENTH);
 				pumpBoardInfo.permission = PERMISSION_ALLOW;
 				Set_Product_Permission();
+				
+				BEEP_ON;	//短声音提示
+				OSTimeDly(10);
+				BEEP_OFF;
 			} else {
 				LOG_WRITE_SN("格式错误，请重新写入\r\n");
+				BEEP_ON;	//长响声音提示
+				OSTimeDly(100);
+				BEEP_OFF;
 			}
 		} 
 		//LOG_WRITE_SN("等待写码输入....\r\n");

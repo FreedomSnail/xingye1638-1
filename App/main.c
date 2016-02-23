@@ -168,13 +168,13 @@ void BSP_Stage_2_Init(void)
 	Get_Product_Permission();
 	memcpy(GprsCmd.BaseStationLongitude,"106.123456",GPRS_BASE_STATION_LONGITUDE_LENTH);
 	memcpy(GprsCmd.BaseStationLatitude,"21.123456",GPRS_BASE_STATION_LATITUDE_LENTH);
+	//pumpBoardInfo.isSNSave = SN_SAVE_NO;
+	//pumpBoardInfo.permission = PERMISSION_PROHIBIT;
 	if(pumpBoardInfo.permission == PERMISSION_ALLOW) {	
 		LOG_SIM900("授权允许\r\n");
 	} else {
 		LOG_SIM900("禁止授权\r\n");
 	}
-	
-
 	App_TaskCreate();
 	ADC_SoftwareStartConvCmd(ADC1, ENABLE);
 	DMA_Cmd(DMA1_Channel1, ENABLE); //启动DMA通道
@@ -263,6 +263,15 @@ void App_TaskCreate(void)
 		                    TASK_SEND_PUMP_BOARD_INFO_STK_SIZE,
 		                    (void *)0,
 		                    OS_TASK_OPT_STK_CHK|OS_TASK_OPT_STK_CLR); 
+	OSTaskCreateExt(Task_Beep_Tip,
+   					(void *)0,
+   					(OS_STK *)&TaskBeepTipStk[TASK_BEEP_TIP_STK_SIZE-1],
+   					TASK_BEEP_TIP_PRIO,
+   					TASK_BEEP_TIP_PRIO,
+   					(OS_STK *)&TaskBeepTipStk[0],
+		                    TASK_BEEP_TIP_STK_SIZE,
+		                    (void *)0,
+		                    OS_TASK_OPT_STK_CHK|OS_TASK_OPT_STK_CLR);
 	#if 1	                    
 	OSTaskCreateExt(Task_Gprs_Proc,
    					(void *)0,

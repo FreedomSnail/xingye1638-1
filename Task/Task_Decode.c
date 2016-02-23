@@ -38,6 +38,8 @@ OS_EVENT  	*SemPWM;
 
 
 OS_STK 		TaskSendPumpBoardInfoStk[TASK_SEND_PUMP_BOARD_INFO_STK_SIZE];
+OS_STK 		TaskBeepTipStk[TASK_BEEP_TIP_STK_SIZE];
+
 //OS_EVENT 	*SemSendPumpBoardInfo;
 
 /************************************************************************************************
@@ -90,27 +92,44 @@ void Pump_Delay_Check_Reset(void)
 void Task_PWM_Ctrl_Pump(void* p_arg)
 {
 	INT8U err;
+	u8 pwmCnt=0;
+	u8 pwmOffCnt = 0;
+	u8 pwmOnCnt = 0;
 	p_arg = p_arg;
 	SemPWM = OSSemCreate(0);
 	if((pumpBoardInfo.permission == PERMISSION_PROHIBIT)||(pumpBoardInfo.isSNSave == SN_SAVE_NO)) {
 		while(1) {
 			OSTimeDly(500);
-			LOG_DJI("\r\nPWM ctrl disable\r\n");
+			//LOG_DJI("\r\nPWM ctrl disable\r\n");
 		}
 	}
 	while(1) {
 		OSSemPend(SemPWM,10,&err); 
 		if(pumpBoardInfo.remoteOnlineFlag == OFFLINE) {
 			if(OS_ERR_NONE == err) {
-				if(pumpBoardInfo.PWMPeriod<PWM_HIGHT_LEVEL_WIDTH_DOWN) {
-					Pump_Voltage_Set(0);
-				} else if(pumpBoardInfo.PWMPeriod>PWM_HIGHT_LEVEL_WIDTH_UP){
-					Pump_Voltage_Set(PUMP_VOLTAGE_OUT);
+				if( pwmCnt<10 ) {
+					pwmCnt++;
+					if(pumpBoardInfo.PWMPeriod<PWM_HIGHT_LEVEL_WIDTH_DOWN) {
+						pwmOffCnt++;
+					} else if(pumpBoardInfo.PWMPeriod>PWM_HIGHT_LEVEL_WIDTH_UP){
+						pwmOnCnt ++;
+					}
+				} else {
+					pwmCnt = 0;
+					if(pwmOffCnt>7) {
+						Pump_Voltage_Set(0);
+					} else if(pwmOnCnt>7) {
+						Pump_Voltage_Set(PUMP_VOLTAGE_OUT);
+					}
+					pwmOffCnt = pwmOnCnt = 0;
 				}
 				pumpBoardInfo.pwmOnlineFlag = ONLINE;
+				pumpBoardInfo.beepTip = BEEP_TIP_NORMAL_PWM_SIGNAL;
 			} else {	// lose pwm signal
 				pumpBoardInfo.pwmOnlineFlag = OFFLINE;
 				Pump_Voltage_Set(0);
+				pumpBoardInfo.beepTip = BEEP_TIP_LOSE_PWM_SIGNAL;
+				//LOG_DJI("\r\nlose pwm signal!\r\n");
 			}
 		}
 	}
@@ -131,19 +150,26 @@ void Task_Usart_DJI_Ctrl_Pump(void* p_arg)
 	u8* msg;
 	p_arg = p_arg;
 	UsartDjiCtrlPumpQsem = OSQCreate(&UsartDJICtrlQMsgTbl[0], USART_DJI_CTRL_RESOURCES);
-	if((pumpBoardInfo.permission == PERMISSION_PROHIBIT)||(pumpBoardInfo.isSNSave == SN_SAVE_NO)) {
+	if(pumpBoardInfo.isSNSave == SN_SAVE_NO) {	//没有写入机身号码时报警声音为1秒一响
+		pumpBoardInfo.beepTip = BEEP_TIP_NO_SN;
 		while(1) {
 			OSTimeDly(500);
-			LOG_DJI("\r\nUsart ctrl disable\r\n");
+			LOG_DJI("\r\nNo sn save,please write sn!\r\n");
+		}
+	} else  {
+		if(pumpBoardInfo.permission == PERMISSION_PROHIBIT) {//没有授权许可时的报警声音为3秒两响
+			pumpBoardInfo.beepTip = BEEP_TIP_NO_PERMISSION;
+			while(1) {
+				OSTimeDly(500);
+				LOG_DJI("\r\nNo permission,please check permission!\r\n");
+			}
+		} else {	//通过则叫三声
+			pumpBoardInfo.beepTip = BEEP_TIP_POWER_ON;
 		}
 	}
 	while(1) {
 		msg = (u8 *)OSQPend(UsartDjiCtrlPumpQsem,50,&err); 
 		if(OS_ERR_NONE == err) {
-			//USART_Send_Buf(SERIAL_PORT_DEBUG,msg,5);
-			//temp = Device.targetPumpVoltage*10;
-			//USART_Send_Buf(SERIAL_PORT_DEBUG,"v=%d\r\n",Device.targetPumpVoltage*10);
-			//USART_OUT(SERIAL_PORT_DEBUG,"v=%d\r\n",temp);
  			if(1==*msg) {
  				Pump_Delay_Check_Set();
 				Pump_Voltage_Set(PUMP_VOLTAGE_OUT);
@@ -154,16 +180,111 @@ void Task_Usart_DJI_Ctrl_Pump(void* p_arg)
 				pumpBoardInfo.remoteOnlineFlag = ONLINE;
 			}
 			memcpy((u8*)&pumpBoardInfo.targetPumpVoltage,msg+1,4);
+			pumpBoardInfo.beepTip = BEEP_TIP_NORMAL_USART_SIGNAL;
 		} else {	// lose usart signal
 			Pump_Delay_Check_Reset();
 			pumpBoardInfo.remoteOnlineFlag = OFFLINE;
 			if(pumpBoardInfo.pwmOnlineFlag == OFFLINE) {
 				Pump_Voltage_Set(0);
 			}
+			if(pumpBoardInfo.beepTip != BEEP_TIP_NORMAL_PWM_SIGNAL) {
+				pumpBoardInfo.beepTip = BEEP_TIP_LOSE_USART_SIGNAL;
+			}
+			
+			//LOG_DJI("\r\nlose usart signal!\r\n");
 		}
 	}
 	
 }
+
+/************************************************************************************************
+** Function name :			
+** Description :
+** 
+** Input :
+** Output :
+** Return :
+** Others :
+** 
+************************************************************************************************/
+void Task_Beep_Tip(void* p_arg)
+{
+	beepTip_TypeEnum beepTip = BEEP_TIP_MUTE;
+	p_arg = p_arg;
+	while(1) {
+		#if 0
+		if(pumpBoardInfo.isSNSave == SN_SAVE_NO) {
+			pumpBoardInfo.beepTip = BEEP_TIP_NO_SN;	
+		} else {
+			if(pumpBoardInfo.permission == PERMISSION_PROHIBIT) {
+				pumpBoardInfo.beepTip = BEEP_TIP_NO_PERMISSION;	
+			} else {
+				pumpBoardInfo.beepTip = BEEP_TIP_POWER_ON;
+			}
+		}
+		#endif
+		switch(pumpBoardInfo.beepTip) {
+			case BEEP_TIP_MUTE:
+				if(beepTip != pumpBoardInfo.beepTip) {
+					beepTip = pumpBoardInfo.beepTip;
+					BEEP_OFF;
+				}
+				break;
+			case BEEP_TIP_POWER_ON:	//正常启动，响三短声
+				if(beepTip != pumpBoardInfo.beepTip) {
+					beepTip = pumpBoardInfo.beepTip;
+					BEEP_ON;
+					OSTimeDly(8);
+					BEEP_OFF;
+					OSTimeDly(8);
+					BEEP_ON;
+					OSTimeDly(12);
+					BEEP_OFF;
+					OSTimeDly(12);
+					BEEP_ON;
+					OSTimeDly(20);
+					BEEP_OFF;
+				}
+				break;
+			case BEEP_TIP_NO_SN:	//没有机身编号，长响长停
+				beepTip = pumpBoardInfo.beepTip;
+				BEEP_OFF;
+				OSTimeDly(500);
+				BEEP_ON;
+				OSTimeDly(300);
+				break;
+			case BEEP_TIP_NO_PERMISSION:	//没有授权，响一声短声
+				beepTip = pumpBoardInfo.beepTip;
+				BEEP_OFF;
+				OSTimeDly(90);
+				BEEP_ON;
+				OSTimeDly(10);
+				break;
+			case BEEP_TIP_LOSE_PWM_SIGNAL:
+			case BEEP_TIP_LOSE_USART_SIGNAL:	//丢失信号，响两短声
+				beepTip = pumpBoardInfo.beepTip;
+				BEEP_OFF;
+				OSTimeDly(280);
+				BEEP_ON;
+				OSTimeDly(6);
+				BEEP_OFF;
+				OSTimeDly(8);
+				BEEP_ON;
+				OSTimeDly(6);
+				break;
+			case BEEP_TIP_NORMAL_PWM_SIGNAL:
+			case BEEP_TIP_NORMAL_USART_SIGNAL:
+				if(beepTip != pumpBoardInfo.beepTip) {
+					beepTip = pumpBoardInfo.beepTip;
+					BEEP_OFF;
+				}
+				break;
+			default:
+				break;
+		}
+	}
+}
+
 /************************************************************************************************
 ** Function name :			
 ** Description :
@@ -242,3 +363,4 @@ void Task_Send_Pump_Board_Info(void* p_arg)
 	}
 	#endif
 }
+

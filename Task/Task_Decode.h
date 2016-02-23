@@ -17,6 +17,8 @@
 #define		TASK_SEND_PUMP_BOARD_INFO_STK_SIZE	128
 #define		TASK_SEND_PUMP_BOARD_INFO_PRIO		7
 
+#define		TASK_BEEP_TIP_STK_SIZE	128
+#define		TASK_BEEP_TIP_PRIO		11
 
 
 
@@ -32,6 +34,9 @@ extern  OS_EVENT  	*SemPWM;
 
 extern  OS_STK 		TaskSendPumpBoardInfoStk[];
 
+extern  OS_STK 		TaskBeepTipStk[];
+
+
 void Task_Dji_SDK_Codec(void *p_arg);
 
 void Task_PWM_Ctrl_Pump(void* p_arg);
@@ -40,6 +45,7 @@ void Task_Usart_DJI_Ctrl_Pump(void* p_arg);
 
 void Task_Send_Pump_Board_Info(void* p_arg);
 
+void Task_Beep_Tip(void* p_arg);
 
 #endif
 
